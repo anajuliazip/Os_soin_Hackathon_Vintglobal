@@ -79,9 +79,9 @@
 
         <!-- KPIs Rápidos -->
         <div class="grid grid-cols-3 gap-4">
-          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">Devs no Bench (100% Livres)</p><h3 class="text-2xl font-bold text-emerald-400 mt-1" id="dash-bench">12</h3></div>
-          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">Total de Demandas Ativas</p><h3 class="text-2xl font-bold mt-1" id="dash-demandas">8</h3></div>
-          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">Top Skill Disponível</p><h3 class="text-xl font-bold text-indigo-400 mt-1" id="dash-skill">Python</h3></div>
+          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">Devs no Bench (100% Livres)</p><h3 class="text-2xl font-bold text-emerald-400 mt-1" id="dash-bench">-</h3></div>
+          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">Total de Demandas Ativas</p><h3 class="text-2xl font-bold mt-1" id="dash-demandas">-</h3></div>
+          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">Top Skill Disponível</p><h3 class="text-xl font-bold text-indigo-400 mt-1" id="dash-skill">-</h3></div>
         </div>
 
         <!-- Lista do Bench Geral -->
@@ -403,6 +403,8 @@
         </div>`;
       }).join('');
     }
+
+    carregarDashboard();
   </script>
 </body>
 </html>
