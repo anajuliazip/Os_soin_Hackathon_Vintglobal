@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InHire AI - Alocação Inteligente (Painel do José)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+
+  <!-- Cabeçalho -->
+  <header class="border-b border-slate-800 bg-slate-950/60 px-6 py-4 flex justify-between items-center">
+    <div>
+      <h1 class="text-xl font-bold text-indigo-400">InHire • Alocação Inteligente com Qwen AI</h1>
+      <p class="text-xs text-slate-400">Cruzamento Automático: SGD (Interno) ➔ Banco de Talentos (Externo)</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="mudarAba('busca')" id="tab-busca" class="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium">🔍 Busca & Ranking</button>
+      <button onclick="mudarAba('comparar')" id="tab-comparar" class="px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium">⚖️ Comparar (<span id="count-comp">0</span>)</button>
+      <button onclick="carregarFavoritos(); mudarAba('favoritos')" id="tab-favoritos" class="px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium">⭐ Favoritos</button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-6">
+
+    <!-- ABA 1: BUSCA E RANKING -->
+    <section id="sec-busca" class="space-y-6">
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-5 space-y-4">
+        <label class="block text-sm font-semibold text-slate-300">Descreva sua necessidade para a IA (Qwen 2.5) ou use os filtros:</label>
+        <div class="flex gap-3">
+          <input id="input-ia" type="text" placeholder="Ex: Preciso de 1 dev Senior com skill em Node.js e AWS com 50% de disponibilidade por 3 meses"
+            class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+          <button onclick="executarBusca()" id="btn-buscar" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-lg font-semibold text-sm transition">
+            Buscar Talentos
+          </button>
+        </div>
+
+        <!-- Filtros complementares -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-700/60 text-xs">
+          <div>
+            <span class="text-slate-400">Regra de Disponibilidade:</span>
+            <select id="modo-disp" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded p-2">
+              <option value="faixa_ate">Todos (Incluir 0% a X% para Remanejamento)</option>
+              <option value="estrito_0_a_x">Estrito: Apenas entre 0% e X% livre</option>
+              <option value="minimo">Apenas Disponibilidade Mínima (>= X%)</option>
+            </select>
+          </div>
+          <div id="box-filtros-ia" class="md:col-span-2 flex items-center gap-2 text-slate-300">
+            <!-- Preenchido após retorno do Qwen -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumo da Busca -->
+      <div id="resumo-container" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+          <span class="text-xs text-slate-400">Status da Busca</span>
+          <p id="kpi-status" class="text-lg font-bold mt-1">-</p>
+        </div>
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+          <span class="text-xs text-slate-400">Base Acionada (Roteamento n8n)</span>
+          <p id="kpi-origem" class="text-lg font-bold text-indigo-400 mt-1">-</p>
+        </div>
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+          <span class="text-xs text-slate-400">Profissionais Ranqueados</span>
+          <p id="kpi-total" class="text-lg font-bold mt-1">0</p>
+        </div>
+      </div>
+
+      <!-- Grid de Cards do Ranking -->
+      <div id="lista-ranking" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- ABA 2: COMPARAÇÃO LADO A LADO -->
+    <section id="sec-comparar" class="hidden space-y-4">
+      <h2 class="text-lg font-bold">Comparação Lado a Lado</h2>
+      <div id="grid-comparacao" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- ABA 3: FAVORITOS SALVOS NO BANCO -->
+    <section id="sec-favoritos" class="hidden space-y-4">
+      <h2 class="text-lg font-bold">Candidatos Favoritados pelo Gestor</h2>
+      <div id="lista-favoritos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
+  </main>
+
+  <!-- MODAL DE REMANEJAMENTO -->
+  <div id="modal-remanejar" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full p-6 space-y-4">
+      <h3 class="text-lg font-bold text-indigo-400">Remanejar Alocação no SGD</h3>
+      <p id="rem-nome" class="text-sm text-slate-300 font-medium"></p>
+      <input type="hidden" id="rem-id-colab">
+
+      <div class="space-y-3 text-sm">
+        <div>
+          <label class="text-xs text-slate-400">Demanda Atual (Reduzir horas):</label>
+          <select id="rem-demanda-antiga" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs text-slate-400">Novo % na Demanda Antiga:</label>
+            <input type="number" id="rem-pct-antiga" value="50" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">ID da Nova Demanda:</label>
+            <input type="number" id="rem-demanda-nova" value="8" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="text-xs text-slate-400">% Nova Demanda:</label>
+            <input type="number" id="rem-pct-nova" value="50" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Mês (3 letras):</label>
+            <input type="text" id="rem-mes" value="Nov" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Ano:</label>
+            <input type="number" id="rem-ano" value="2026" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-3">
+        <button onclick="fecharModal()" class="px-4 py-2 rounded bg-slate-700 text-sm">Cancelar</button>
+        <button onclick="confirmarRemanejamento()" class="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold">Confirmar no Banco</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // CONFIGURAÇÃO DOS ENDPOINTS DO N8N
+    const N8N_BASE_URL = "http://localhost:5678/webhook";
+    const ENDPOINTS = {
+      BUSCA: `${N8N_BASE_URL}/d487a45d-f399-488d-a16e-0f0b6ed9bf25`,
+      SALVAR_FAV: `${N8N_BASE_URL}/salvar-favorito`,
+      LISTAR_FAV: `${N8N_BASE_URL}/listar-favoritos`,
+      REMANEJAR: `${N8N_BASE_URL}/remanejar-alocacao`
+    };
+
+    let ultimoRanking = [];
+    let selecionadosComparacao = [];
+
+    // 1. FUNÇÃO DE BUSCA (ACIONA QWEN + SGD / TALENTOS)
+    async function executarBusca() {
+      const texto = document.getElementById('input-ia').value;
+      const modoDisp = document.getElementById('modo-disp').value;
+      const btn = document.getElementById('btn-buscar');
+      btn.innerText = "Consultando Qwen & Banco...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(ENDPOINTS.BUSCA, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            texto_busca: texto,
+            modo_disponibilidade: modoDisp
+          })
+        });
+        const data = await res.json();
+        renderizarResultadoBusca(data);
+      } catch (err) {
+        alert("Erro ao conectar ao n8n. Verifique se o workflow está Active e o CORS liberado.");
+        console.error(err);
+      } finally {
+        btn.innerText = "Buscar Talentos";
+        btn.disabled = false;
+      }
+    }
+
+    function renderizarResultadoBusca(data) {
+      const resumo = data.resumo_busca || {};
+      ultimoRanking = data.ranking || [];
+
+      document.getElementById('resumo-container').classList.remove('hidden');
+      document.getElementById('kpi-status').innerText = resumo.status || "-";
+      document.getElementById('kpi-origem').innerText = resumo.origem_dados || "-";
+      document.getElementById('kpi-total').innerText = resumo.total_encontrados ?? 0;
+
+      const f = resumo.filtros_extraidos || {};
+      document.getElementById('box-filtros-ia').innerHTML = `
+        <span class="text-indigo-400 font-semibold">Parâmetros extraídos pelo Qwen:</span>
+        <span class="bg-slate-900 px-2 py-1 rounded">Senioridade: ${f.senioridade || 'Todas'}</span>
+        <span class="bg-slate-900 px-2 py-1 rounded">Skills: ${(f.skills || []).join(', ')}</span>
+        <span class="bg-slate-900 px-2 py-1 rounded">Meta Livre: ${f.disponibilidade_minima ?? 50}%</span>
+      `;
+
+      const container = document.getElementById('lista-ranking');
+      if (ultimoRanking.length === 0) {
+        container.innerHTML = `<p class="text-slate-400 col-span-3">Nenhum profissional encontrado nas duas bases.</p>`;
+        return;
+      }
+
+      container.innerHTML = ultimoRanking.map((cand, i) => `
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex justify-between items-start">
+              <span class="text-xs font-bold px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300">${cand.posicao} • ${cand.tipo_base.toUpperCase()}</span>
+              <label class="text-xs flex items-center gap-1 cursor-pointer text-slate-300">
+                <input type="checkbox" onchange="toggleComparar(${i})" ${selecionadosComparacao.includes(i) ? 'checked' : ''}> Comparar
+              </label>
+            </div>
+            <h3 class="text-base font-bold mt-2">${cand.nome}</h3>
+            <p class="text-xs text-slate-400">${cand.cargo} • ${cand.senioridade}</p>
+
+            <div class="mt-3 space-y-1 text-xs">
+              <p><strong class="text-slate-300">Match Skills:</strong> <span class="text-emerald-400 font-semibold">${cand.aderencia_skills}</span></p>
+              <p><strong class="text-slate-300">Tempo Livre:</strong> ${cand.tempo_livre} (Alocado: ${cand.alocacao_atual})</p>
+              <p class="text-amber-300">${cand.status_acao}</p>
+            </div>
+
+            <div class="mt-3 flex flex-wrap gap-1">
+              ${(cand.skills_atendidas || []).map(s => `<span class="text-[11px] bg-slate-900 px-2 py-0.5 rounded border border-slate-700">${s}</span>`).join('')}
+            </div>
+          </div>
+
+          <div class="flex gap-2 pt-3 border-t border-slate-700/60">
+            <button onclick="salvarFavorito(${i})" class="flex-1 bg-slate-700 hover:bg-slate-600 py-1.5 rounded text-xs font-medium">⭐ Favoritar</button>
+            ${cand.tipo_base === 'interno' ? `<button onclick="abrirModalRemanejar(${i})" class="flex-1 bg-indigo-600 hover:bg-indigo-500 py-1.5 rounded text-xs font-medium">🔄 Remanejar</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 2. FUNÇÃO SALVAR FAVORITO
+    async function salvarFavorito(index) {
+      const cand = ultimoRanking[index];
+      const scoreLimpo = parseInt(cand.aderencia_skills) || 100;
+      const dispLimpa = parseInt(cand.tempo_livre) || 100;
+
+      const res = await fetch(ENDPOINTS.SALVAR_FAV, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_gerente: 1,
+          id_profissional: cand.id,
+          nome_profissional: cand.nome,
+          origem: cand.tipo_base === 'interno' ? 'SGD (Interno)' : 'Banco de Talentos (Externo)',
+          cargo: cand.cargo,
+          senioridade: cand.senioridade,
+          score_ranking: scoreLimpo,
+          disponibilidade_media: dispLimpa
+        })
+      });
+      const out = await res.json();
+      alert(out.mensagem || "Salvo nos favoritos!");
+    }
+
+    // 3. FUNÇÃO LISTAR FAVORITOS
+    async function carregarFavoritos() {
+      const container = document.getElementById('lista-favoritos');
+      container.innerHTML = `<p class="text-sm text-slate-400">Carregando favoritos...</p>`;
+      try {
+        const res = await fetch(ENDPOINTS.LISTAR_FAV);
+        const text = await res.text();
+        const lista = text ? JSON.parse(text) : [];
+
+        if (!Array.isArray(lista) || lista.length === 0 || !lista[0]?.id) {
+          container.innerHTML = `<p class="text-sm text-slate-400 col-span-3">Nenhum favorito salvo ainda.</p>`;
+          return;
+        }
+
+        container.innerHTML = lista.map(f => `
+          <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl space-y-2">
+            <span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">${f.origem}</span>
+            <h3 class="font-bold">${f.nome_profissional}</h3>
+            <p class="text-xs text-slate-400">${f.cargo} • ${f.senioridade}</p>
+            <p class="text-xs">Score: <strong>${f.score_ranking}%</strong> | Livre: <strong>${f.disponibilidade_media}%</strong></p>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = `<p class="text-sm text-slate-400">Lista de favoritos vazia.</p>`;
+      }
+    }
+
+    // 4. FUNÇÕES DE REMANEJAMENTO
+    function abrirModalRemanejar(index) {
+      const cand = ultimoRanking[index];
+      document.getElementById('rem-id-colab').value = cand.id;
+      document.getElementById('rem-nome').innerText = `Colaborador: ${cand.nome} (ID: ${cand.id})`;
+
+      const select = document.getElementById('rem-demanda-antiga');
+      const projetos = cand.projetos_atuais || [];
+      select.innerHTML = projetos.length > 0
+        ? projetos.map(p => `<option value="${p.id_demanda}">${p.nome_demanda} (ID: ${p.id_demanda})</option>`).join('')
+        : `<option value="0">Sem demanda anterior (Alocação direta)</option>`;
+
+      document.getElementById('modal-remanejar').classList.remove('hidden');
+    }
+
+    function fecharModal() {
+      document.getElementById('modal-remanejar').classList.add('hidden');
+    }
+
+    async function confirmarRemanejamento() {
+      const payload = {
+        id_colaborador: Number(document.getElementById('rem-id-colab').value),
+        id_demanda_antiga: Number(document.getElementById('rem-demanda-antiga').value),
+        nova_porcentagem_demanda_antiga: Number(document.getElementById('rem-pct-antiga').value),
+        id_demanda_nova: Number(document.getElementById('rem-demanda-nova').value),
+        porcentagem_nova_demanda: Number(document.getElementById('rem-pct-nova').value),
+        mes: document.getElementById('rem-mes').value,
+        ano: Number(document.getElementById('rem-ano').value)
+      };
+
+      const res = await fetch(ENDPOINTS.REMANEJAR, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const out = await res.json();
+      alert(out.mensagem || "Remanejamento concluído!");
+      fecharModal();
+      executarBusca();
+    }
+
+    // 5. COMPARAÇÃO E NAVEGAÇÃO DE ABAS
+    function toggleComparar(index) {
+      if (selecionadosComparacao.includes(index)) {
+        selecionadosComparacao = selecionadosComparacao.filter(i => i !== index);
+      } else {
+        selecionadosComparacao.push(index);
+      }
+      document.getElementById('count-comp').innerText = selecionadosComparacao.length;
+      renderizarComparacao();
+    }
+
+    function renderizarComparacao() {
+      const grid = document.getElementById('grid-comparacao');
+      grid.innerHTML = selecionadosComparacao.map(idx => {
+        const c = ultimoRanking[idx];
+        return `
+          <div class="bg-slate-800 border border-indigo-500/40 p-5 rounded-xl space-y-2 text-xs">
+            <h3 class="text-base font-bold text-indigo-300">${c.nome}</h3>
+            <p><strong>Base:</strong> ${c.tipo_base}</p>
+            <p><strong>Senioridade:</strong> ${c.senioridade}</p>
+            <p><strong>Aderência Skills:</strong> ${c.aderencia_skills}</p>
+            <p><strong>Tempo Livre:</strong> ${c.tempo_livre}</p>
+            <p><strong>Alocação Atual:</strong> ${c.alocacao_atual}</p>
+            <p><strong>Projetos Atuais:</strong> ${(c.projetos_atuais || []).map(p => p.nome_demanda).join(', ') || 'Nenhum'}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function mudarAba(aba) {
+      ['busca', 'comparar', 'favoritos'].forEach(a => {
+        document.getElementById(`sec-${a}`).classList.toggle('hidden', a !== aba);
+        document.getElementById(`tab-${a}`).className = a === aba
+          ? 'px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium'
+          : 'px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium';
+      });
+    }
+  </script>
+</body>
+</html>

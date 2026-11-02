@@ -1,0 +1,11 @@
+# Local environment files
+.env
+**/.env
+!.env.example
+**/!.env.example
+
+# Local data and generated files
+**/.n8n/
+**/node_modules/
+**/__pycache__/
+*.log
