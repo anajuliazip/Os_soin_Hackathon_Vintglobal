@@ -108,11 +108,32 @@
     .icon-btn:hover { background: rgba(255,255,255,.09); color: var(--text); border-color: var(--line-2); }
 
     /* ==========================================
-       LAYOUT
+       LAYOUT E COMPORTAMENTOS (HOVER MODAIS)
        ========================================== */
     .app { position: relative; z-index: 1; display: flex; height: 100vh; height: 100dvh; }
     .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .backdrop { display: none; }
+    .app.chat-primary { flex-direction: column; }
+    .app.chat-primary .sidebar {
+      width: 100%;
+      flex: 1;
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .app.chat-primary .main { display: none; }
+    .app.chat-primary .sb-body { width: min(1120px, 100%); margin: 0 auto; }
+    .app.chat-primary .results { padding-bottom: 28px; }
+
+    .cand[data-action], .card.fav[data-action], .cmp-card[data-action] { cursor: pointer; }
+    .cand[data-action]:hover, .card.fav[data-action]:hover, .cmp-card[data-action]:hover {
+      border-color: var(--blue);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(0,0,0,.3);
+    }
+    .tbl tbody tr[data-action] { cursor: pointer; transition: background .15s; }
+    .tbl tbody tr[data-action]:hover { background: rgba(79,140,255,.1); }
+    .people li[data-action] { cursor: pointer; padding: 4px; border-radius: 8px; transition: background 0.15s; }
+    .people li[data-action]:hover { background: rgba(79,140,255,.15); }
 
     /* ---- Sidebar ---- */
     .sidebar {
@@ -130,6 +151,31 @@
     .brand-text small { display: block; font-size: 12px; color: var(--muted); }
     .sb-rail { display: none; flex-direction: column; align-items: center; gap: 10px; padding: 6px 0; }
     .sb-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .sb-actions { display: flex; gap: 8px; }
+    .ic-shrink { display: none; }
+
+    /* ---- Sidebar recolhida (desktop) ---- */
+    .app.sb-collapsed .sidebar { width: var(--sb-w-c); }
+    .app.sb-collapsed .sb-body,
+    .app.sb-collapsed .brand-text,
+    .app.sb-collapsed #btn-sb-full { display: none; }
+    .app.sb-collapsed .sb-head { flex-direction: column; justify-content: flex-start; gap: 12px; padding: 16px 0 8px; }
+    .app.sb-collapsed .sb-rail { display: flex; }
+    .app.sb-collapsed #btn-sb-collapse .i { transform: scaleX(-1); }
+
+    /* ---- Chat em tela cheia (desktop) ---- */
+    .app.sb-full .sidebar { width: 100%; flex: 1; box-shadow: none; border-right: 0; }
+    .app.sb-full .main { display: none; }
+    .app.sb-full .sb-head { max-width: 1280px; width: 100%; margin: 0 auto; padding: 18px 24px 12px; }
+    .app.sb-full .sb-body { width: 100%; max-width: 1280px; margin: 0 auto; }
+    .app.sb-full .search-card { margin: 4px 24px 0; }
+    .app.sb-full .results { padding: 20px 24px 32px; }
+    .app.sb-full .grp { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; }
+    .app.sb-full .grp-h { grid-column: 1 / -1; }
+    .app.sb-full .ic-expand { display: none; }
+    .app.sb-full .ic-shrink { display: block; }
+    .app.sb-full #btn-sb-collapse { display: none; }
+    
     .search-card {
       margin: 4px 16px 0; padding: 16px; border-radius: 18px;
       background: linear-gradient(180deg, rgba(139,108,255,.11), rgba(79,140,255,.04));
@@ -184,9 +230,8 @@
       padding: 14px; border-radius: 14px; display: grid; gap: 12px;
       background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
       border: 1px solid var(--line); box-shadow: 0 6px 16px rgba(0,0,0,.22);
-      transition: border-color .18s, transform .18s;
+      transition: border-color .18s, transform .18s, box-shadow .18s;
     }
-    .cand:hover { border-color: var(--line-2); }
     .cand-top { display: flex; align-items: flex-start; gap: 10px; }
     .rank { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 9px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: rgba(139,108,255,.16); color: #cdbfff; border: 1px solid rgba(139,108,255,.3); flex: none; }
     .cand-info { min-width: 0; flex: 1; }
@@ -280,8 +325,6 @@
     .th-btn { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
     .th-btn:hover { color: #fff; }
     .tbl td { padding: 14px 16px; border-bottom: 1px solid rgba(148,163,255,.08); vertical-align: middle; }
-    .tbl tbody tr { transition: background .15s; }
-    .tbl tbody tr:hover { background: rgba(79,140,255,.07); }
     .person { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .avatar { --h: 230; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex: none; font-size: 13px; font-weight: 700; color: #fff; background: linear-gradient(135deg, hsl(var(--h) 70% 52%), hsl(calc(var(--h) + 45) 70% 42%)); }
     .avatar.sm { width: 28px; height: 28px; border-radius: 9px; font-size: 11px; }
@@ -322,7 +365,7 @@
     .insight b { font-size: 15px; }
     .insight span { color: var(--muted); font-size: 13px; }
     .cmp-grid { display: grid; gap: 16px; align-items: start; }
-    .cmp-card { padding: 18px; display: grid; gap: 14px; }
+    .cmp-card { padding: 18px; display: grid; gap: 14px; transition: border-color .18s, transform .18s, box-shadow .18s;}
     .cmp-card.best-any { border-color: rgba(52,211,153,.35); }
     .cmp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .cmp-head h3 { font-size: 17px; overflow-wrap: anywhere; line-height: 1.3; }
@@ -335,7 +378,7 @@
 
     /* ---- Favoritos ---- */
     .grid-fav { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
-    .fav { padding: 18px; display: grid; gap: 14px; align-content: start; position: relative; overflow: hidden; }
+    .fav { padding: 18px; display: grid; gap: 14px; align-content: start; position: relative; overflow: hidden; transition: border-color .18s, transform .18s, box-shadow .18s; }
     .fav::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--grad); }
     .fav-top { display: flex; gap: 12px; align-items: flex-start; }
     .fav h3 { font-size: 16px; overflow-wrap: anywhere; line-height: 1.3; }
@@ -397,6 +440,11 @@
       .app.sb-open .backdrop { display: block; position: fixed; inset: 0; z-index: 35; background: rgba(3,6,16,.66); backdrop-filter: blur(3px); }
       .app.sb-collapsed .sidebar { width: min(94vw, 420px); }
       .sb-rail { display: none !important; }
+      #btn-sb-full { display: none !important; }
+      .app.sb-collapsed .sb-body, .app.sb-collapsed .brand-text { display: flex; }
+      .app.sb-collapsed .brand-text { display: block; }
+      .app.sb-collapsed .sb-head { flex-direction: row; justify-content: space-between; padding: 16px 16px 12px; }
+      .app.sb-collapsed #btn-sb-collapse .i { transform: none; }
       .sb-toggle-top { display: inline-flex !important; }
       .topbar { padding: 10px 14px 0; gap: 8px; }
       .content { padding: 20px 14px 40px; }
@@ -455,6 +503,8 @@
     <symbol id="i-sort" viewBox="0 0 24 24"><path d="M8 4v16M4 8l4-4 4 4M16 20V4M12 16l4 4 4-4"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="i-shrink" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></symbol>
   </svg>
 
   <div class="app" id="app">
@@ -472,9 +522,21 @@
             <small>Integração Qwen 2.5 • SGD &amp; Talentos</small>
           </div>
         </div>
-        <button type="button" class="icon-btn" id="btn-sb-collapse" data-action="toggle-sidebar" aria-expanded="true" aria-controls="sidebar" aria-label="Recolher painel de busca" title="Recolher painel">
-          <svg class="i" aria-hidden="true"><use href="#i-panel"/></svg>
-        </button>
+        <div class="sb-actions">
+          <button type="button" class="btn btn-ghost btn-sm sb-chat-tab" data-action="aba" data-aba="chat" aria-selected="true">
+            <svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span>Chat</span>
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm sb-workspace-tab" data-action="aba" data-aba="dashboard">
+            <svg class="i" aria-hidden="true"><use href="#i-dashboard"/></svg><span>Workspace</span>
+          </button>
+          <button type="button" class="icon-btn" id="btn-sb-full" data-action="toggle-full" aria-pressed="false" aria-label="Chat em tela cheia" title="Chat em tela cheia (Esc para sair)">
+            <svg class="i ic-expand" aria-hidden="true"><use href="#i-expand"/></svg>
+            <svg class="i ic-shrink" aria-hidden="true"><use href="#i-shrink"/></svg>
+          </button>
+          <button type="button" class="icon-btn" id="btn-sb-collapse" data-action="toggle-sidebar" aria-expanded="true" aria-controls="sidebar" aria-label="Recolher painel de busca" title="Recolher painel">
+            <svg class="i" aria-hidden="true"><use href="#i-panel"/></svg>
+          </button>
+        </div>
       </div>
 
       <div class="sb-rail">
@@ -535,6 +597,9 @@
           <svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span>Buscar</span>
         </button>
         <nav class="tabs" role="tablist" aria-label="Seções do workspace">
+          <button type="button" role="tab" id="tab-chat" class="tab active" aria-selected="false" tabindex="-1" aria-controls="sidebar" data-action="aba" data-aba="chat">
+            <svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span>Chat &amp; Busca</span>
+          </button>
           <button type="button" role="tab" id="tab-dashboard" class="tab active" aria-selected="true" aria-controls="sec-dashboard" data-action="aba" data-aba="dashboard">
             <svg class="i" aria-hidden="true"><use href="#i-dashboard"/></svg><span>Dashboard Geral</span>
           </button>
@@ -801,16 +866,111 @@
     </div>
   </div>
 
-  <!-- MODAL: DETALHES -->
+  <!-- MODAL: ALOCAÇÃO DIRETA (NOVA DEMANDA OU EXISTENTE) -->
+  <div id="modal-alocar" class="modal hidden" data-modal>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="alocar-titulo">
+      <div class="dlg-head">
+        <div>
+          <h3 id="alocar-titulo">Alocação de Profissional</h3>
+          <p>Defina a dedicação do profissional a uma demanda existente ou crie uma nova.</p>
+        </div>
+        <button type="button" class="icon-btn" data-action="fechar-modal" data-modal-id="modal-alocar" aria-label="Fechar">
+          <svg class="i" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+      </div>
+
+      <div class="who" style="margin: 0 22px 14px; background: rgba(52,211,153,.07); border-color: rgba(52,211,153,.25);">
+        <span class="avatar" id="aloc-avatar" style="width:36px;height:36px;font-size:14px;"></span>
+        <div style="min-width:0;flex:1;">
+          <p class="p-name" id="aloc-nome"></p>
+          <p class="p-sub"><b class="grad" id="aloc-disp"></b> livres no período</p>
+        </div>
+      </div>
+
+      <!-- Abas de Navegação Interna do Modal -->
+      <nav class="tabs" style="margin: 0 22px;" role="tablist">
+        <button type="button" id="tab-aloc-existente" class="tab active" style="min-height: 36px; padding: 6px 12px; font-size: 13px;" onclick="mudarAbaAlocacao('existente')">Demanda Existente</button>
+        <button type="button" id="tab-aloc-nova" class="tab" style="min-height: 36px; padding: 6px 12px; font-size: 13px;" onclick="mudarAbaAlocacao('nova')">Criar Nova Demanda</button>
+      </nav>
+
+      <form id="form-alocar" class="dlg-body" novalidate>
+        <input type="hidden" id="aloc-id-colab">
+        <input type="hidden" id="aloc-disp-atual">
+        <input type="hidden" id="aloc-tipo" value="existente">
+
+        <section class="step">
+          <!-- Visão 1: Demanda Existente -->
+          <div id="view-aloc-existente" class="fld">
+            <label for="aloc-demanda-select">Selecione o Projeto / Demanda</label>
+            <select id="aloc-demanda-select" class="field" required aria-describedby="err-aloc-demanda-select"></select>
+            <p class="err" id="err-aloc-demanda-select" role="alert"></p>
+          </div>
+
+          <!-- Visão 2: Nova Demanda -->
+          <div id="view-aloc-nova" class="hidden" style="display:grid; gap:12px;">
+            <div class="fld">
+              <label for="aloc-nova-nome">Nome da Demanda</label>
+              <input type="text" id="aloc-nova-nome" class="field" placeholder="Ex.: Backend API Billing">
+              <p class="err" id="err-aloc-nova-nome" role="alert"></p>
+            </div>
+            <div class="row2">
+              <div class="fld">
+                <label for="aloc-nova-inicio">Data Início</label>
+                <input type="date" id="aloc-nova-inicio" class="field" style="color-scheme: dark;">
+                <p class="err" id="err-aloc-nova-inicio" role="alert"></p>
+              </div>
+              <div class="fld">
+                <label for="aloc-nova-fim">Data Fim Prevista</label>
+                <input type="date" id="aloc-nova-fim" class="field" style="color-scheme: dark;">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="step">
+          <div class="row2">
+            <div class="fld">
+              <label for="aloc-pct">% de Alocação (Dedicação)</label>
+              <input type="number" id="aloc-pct" class="field" value="50" min="1" max="100" step="1" inputmode="numeric" oninput="previewDisponibilidade()" required>
+              <p class="err" id="err-aloc-pct" role="alert"></p>
+            </div>
+            <div class="fld">
+              <label>Disponibilidade Restante</label>
+              <div class="field" style="display:flex; align-items:center; background:rgba(255,255,255,.02); border:none; pointer-events:none;">
+                <b id="aloc-preview" style="color:#6ee7b7; font-size:16px;">--</b>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="banner-err" id="aloc-erro-geral" role="alert"></div>
+      </form>
+
+      <div class="dlg-foot">
+        <button type="button" class="btn btn-ghost" data-action="fechar-modal" data-modal-id="modal-alocar">Cancelar</button>
+        <button type="button" class="btn btn-ok" id="btn-confirmar-aloc" data-action="confirmar-alocacao">
+          <svg class="i btn-ico" aria-hidden="true"><use href="#i-plus"/></svg><span class="btn-label">Confirmar Alocação</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GLOBAL: DETALHES DO PROFISSIONAL -->
   <div id="modal-detalhes" class="modal hidden" data-modal>
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="det-titulo">
       <div class="dlg-head">
-        <div><h3 id="det-titulo">Detalhes</h3><p id="det-sub"></p></div>
+        <div class="who" style="background:transparent; padding:0; border:none; margin:0;">
+          <span class="avatar" id="det-avatar" style="width: 48px; height: 48px; font-size: 16px;"></span>
+          <div style="min-width:0">
+            <h3 id="det-titulo" class="p-name" style="font-size: 19px; line-height: 1.2; margin-bottom: 2px;"></h3>
+            <p id="det-sub" class="p-sub"></p>
+          </div>
+        </div>
         <button type="button" class="icon-btn" data-action="fechar-modal" data-modal-id="modal-detalhes" aria-label="Fechar">
           <svg class="i" aria-hidden="true"><use href="#i-x"/></svg>
         </button>
       </div>
-      <div class="dlg-body"><dl class="dl" id="det-corpo"></dl></div>
+      <div class="dlg-body" id="det-corpo" style="padding-top: 10px; gap: 20px;"></div>
       <div class="dlg-foot">
         <button type="button" class="btn btn-ghost" data-action="fechar-modal" data-modal-id="modal-detalhes">Fechar</button>
       </div>
@@ -840,19 +1000,21 @@
       DEMANDAS: `${N8N_BASE_URL}/demandas-pessoas`,
       SALVAR_FAV: `${N8N_BASE_URL}/salvar-favorito`,
       LISTAR_FAV: `${N8N_BASE_URL}/listar-favoritos`,
-      REMANEJAR: `${N8N_BASE_URL}/remanejar-alocacao`
+      REMANEJAR: `${N8N_BASE_URL}/remanejar-alocacao`,
+      ALOCAR: `${N8N_BASE_URL}/alocar-profissional` // NOVO ENDPOINT DE ALOCAÇÃO
     };
 
     const MAX_COMPARACAO = 4;
     const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const ABAS = ['dashboard', 'demandas', 'comparar', 'favoritos'];
+    const ABAS = ['chat', 'dashboard', 'demandas', 'comparar', 'favoritos'];
 
     let ultimoRanking = [];
-    let selecionadosComparacao = [];   // snapshots dos candidatos selecionados (sobrevivem a novas buscas)
+    let selecionadosComparacao = [];
     let ultimaBuscaFeita = false;
     let buscando = false;
 
-    let dashPessoas = null;            // pessoas com disponibilidade > 0
+    let dashPessoas = null;            
+    let dashVisiveis = [];             
     let demandasCache = null;
     let favoritosCache = null;
     let favoritosVisiveis = [];
@@ -878,7 +1040,7 @@
     const hue = nome => { let h = 0; for (const ch of String(nome || '')) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
     const avatar = (nome, sm = false) => `<span class="avatar ${sm ? 'sm' : ''}" style="--h:${hue(nome)}" aria-hidden="true">${esc(iniciais(nome))}</span>`;
     const fmtData = v => { const s = String(v ?? ''); const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : (s || '—'); };
-    const tipoInterno = c => c.tipo_base === 'interno';
+    const tipoInterno = c => c.tipo_base === 'interno' || /interno|sgd/i.test(String(c.origem || ''));
     const precisaRemanejar = c => tipoInterno(c) && String(c.status_acao || '').toLowerCase().includes('remanejamento');
 
     function bar(n, cls) {
@@ -896,7 +1058,7 @@
       return dados;
     }
     function msgErro(e) {
-      if (e instanceof TypeError) return 'Não foi possível conectar ao n8n. Verifique se o serviço está ativo em localhost:5678.';
+      if (e instanceof TypeError) return 'Não foi possível conectar. Verifique o servidor local/n8n.';
       if (e && e.status) return `O servidor respondeu com erro (HTTP ${e.status}).`;
       return (e && e.message) || 'Erro inesperado.';
     }
@@ -942,7 +1104,7 @@
     }
 
     // ==========================================
-    // MODAIS (foco, Esc, armadilha de Tab)
+    // MODAIS E PERFIL DETALHADO (GLOBAL)
     // ==========================================
     const focoAnterior = {};
     function abrirModal(id, focoId) {
@@ -991,6 +1153,75 @@
       if (e.target === m) m.id === 'modal-confirm' ? resolverConfirm(false) : fecharModal(m.id);
     }));
 
+    /* Abertura e Montagem do Perfil Detalhado Universal */
+    function abrirDetalhesProfissional(prof) {
+      const nome = prof.nome ?? prof.nome_profissional ?? prof.nome_abreviado ?? 'Não informado';
+      const id = prof.id ?? prof.id_profissional ?? prof.id_colaborador ?? prof.id_talento ?? 'Não informado';
+      const cargo = prof.cargo ?? 'Não informado';
+      const senioridade = prof.senioridade ?? 'Não informada';
+      const origem = prof.origem ?? prof.tipo_base ?? (prof.id_colaborador ? 'Interno' : (prof.id_talento ? 'Externo' : 'Não informada'));
+      const isInterno = /interno|sgd/i.test(origem);
+
+      const skillsAll = listaTexto(prof.skills || prof.skills_cadastradas || prof.skills_buscadas_atendidas || []);
+      const skillsMatch = new Set(listaTexto(prof.skills_atendidas || []));
+      if (skillsAll.length === 0 && skillsMatch.size > 0) { skillsMatch.forEach(s => skillsAll.push(s)); }
+
+      const tempoLivre = num(prof.tempo_livre ?? prof.disponibilidade ?? prof.disponibilidade_media, null);
+      const alocAtual = prof.alocacao_atual ?? prof.percentual_alocado_medio ?? (tempoLivre !== null ? (100 - tempoLivre) + '%' : 'Não informado');
+
+      const demandas = lista(prof.projetos_atuais ?? prof.demandas_atuais ?? []);
+
+      const chavesUsadas = new Set(['nome', 'nome_profissional', 'nome_abreviado', 'id', 'id_profissional', 'id_colaborador', 'id_talento', 'cargo', 'senioridade', 'origem', 'tipo_base', 'skills', 'skills_cadastradas', 'skills_buscadas_atendidas', 'skills_atendidas', 'tempo_livre', 'disponibilidade', 'disponibilidade_media', 'alocacao_atual', 'percentual_alocado_medio', 'projetos_atuais', 'demandas_atuais', 'posicao', 'status_acao', 'aderencia_skills', 'score_ranking', 'qtd_skills_atendidas', 'qtd_skills_pedidas', 'match_encontrado']);
+      let extraHtml = '';
+      for (const [k, v] of Object.entries(prof)) {
+        if (!chavesUsadas.has(k) && v !== null && v !== undefined && v !== '') {
+          const rot = k.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+          const val = typeof v === 'object' ? JSON.stringify(v) : v;
+          extraHtml += `<div><dt style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding-bottom:4px">${esc(rot)}</dt><dd style="margin:0;font-size:14px;color:var(--text)">${esc(val)}</dd></div>`;
+        }
+      }
+
+      $('det-titulo').textContent = nome;
+      $('det-sub').textContent = `${cargo} • ${senioridade}`;
+      $('det-avatar').style.setProperty('--h', hue(nome));
+      $('det-avatar').textContent = iniciais(nome);
+
+      const styleBlock = `background:rgba(255,255,255,.02); padding:16px; border-radius:12px; border:1px solid var(--line);`;
+      const s1 = `<div><h4 class="eyebrow" style="color:var(--blue);margin-bottom:10px">1. Identificação</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; ${styleBlock}">
+          <div><span style="font-size:12px;color:var(--faint)">ID / Matrícula</span><br><b style="font-size:15px">${esc(id)}</b></div>
+          <div><span style="font-size:12px;color:var(--faint)">Origem</span><br><span class="badge ${isInterno?'int':'ext'}">${esc(origem)}</span></div>
+          <div><span style="font-size:12px;color:var(--faint)">Cargo</span><br><b style="font-size:15px">${esc(cargo)}</b></div>
+          <div><span style="font-size:12px;color:var(--faint)">Senioridade</span><br><b style="font-size:15px">${esc(senioridade)}</b></div>
+        </div></div>`;
+
+      const s2 = `<div><h4 class="eyebrow" style="color:var(--blue);margin-bottom:10px">2. Competências (Skills)</h4>
+        <div style="${styleBlock}">
+          ${skillsAll.length ? `<div class="tags">${skillsAll.map(s => `<span class="tag ${skillsMatch.has(s) ? 'brand' : ''}">${esc(s)}</span>`).join('')}</div>` : '<p style="font-size:14px;color:var(--muted);margin:0">Nenhuma competência cadastrada para este perfil.</p>'}
+        </div></div>`;
+
+      const s3 = `<div><h4 class="eyebrow" style="color:var(--blue);margin-bottom:10px">3. Disponibilidade (Agenda)</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; ${styleBlock}">
+          <div><span style="font-size:12px;color:var(--faint)">Tempo Livre</span><br><b style="font-size:18px; color:${tempoLivre === 100 ? '#6ee7b7' : (tempoLivre > 0 ? '#fcd34d' : '#fda4af')}">${tempoLivre !== null ? tempoLivre + '%' : '—'}</b></div>
+          <div><span style="font-size:12px;color:var(--faint)">Total Alocado</span><br><b style="font-size:18px">${esc(alocAtual)}</b></div>
+          <div style="grid-column:1/-1;">${bar(tempoLivre, clsDisp(tempoLivre))}</div>
+        </div></div>`;
+
+      const s4 = `<div><h4 class="eyebrow" style="color:var(--blue);margin-bottom:10px">4. Alocações Atuais (Demandas)</h4>
+        <div style="${styleBlock} display:grid; gap:10px;">
+          ${demandas.length ? demandas.map(d => `<div style="font-size:14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line-2); padding-bottom:8px">
+            <span><b>${esc(d.nome_demanda ?? d.nome ?? 'Projeto Omitido')}</b> <span style="color:var(--faint);font-size:12px">(ID ${esc(d.id_demanda ?? '—')})</span></span>
+            <span class="count-pill" style="font-size:12px;padding:3px 8px">${esc(d.percentual_na_demanda ?? d.porcentagem ?? '—')}%</span>
+          </div>`).join('') : '<p style="font-size:14px;color:var(--muted);margin:0">Nenhuma alocação ativa neste período.</p>'}
+        </div></div>`;
+
+      const s5 = extraHtml ? `<div><h4 class="eyebrow" style="color:var(--blue);margin-bottom:10px">5. Informações Adicionais</h4>
+        <div style="${styleBlock} display:grid; gap:12px; grid-template-columns:1fr 1fr;">${extraHtml}</div></div>` : '';
+
+      $('det-corpo').innerHTML = s1 + s2 + s3 + s4 + s5;
+      abrirModal('modal-detalhes');
+    }
+
     // ==========================================
     // SIDEBAR (recolher / drawer)
     // ==========================================
@@ -1006,7 +1237,21 @@
       b.setAttribute('aria-label', rot); b.title = rot;
     }
     function focarBusca() { definirSidebar(true); setTimeout(() => $('input-ia').focus(), 260); }
-    mqMobile.addEventListener('change', () => { app.classList.remove('sb-open'); initSidebar(); });
+    function definirTelaCheia(ligar) {
+      if (mqMobile.matches) return;
+      if (ligar) app.classList.remove('sb-collapsed');
+      app.classList.toggle('sb-full', ligar);
+      const b = $('btn-sb-full');
+      const rot = ligar ? 'Sair da tela cheia' : 'Chat em tela cheia';
+      b.setAttribute('aria-pressed', String(ligar));
+      b.setAttribute('aria-label', rot);
+      b.title = ligar ? 'Sair da tela cheia (Esc)' : 'Chat em tela cheia (Esc para sair)';
+      if (ligar) setTimeout(() => $('input-ia').focus(), 50);
+    }
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && app.classList.contains('sb-full') && !document.querySelector('[data-modal]:not(.hidden)')) definirTelaCheia(false);
+    });
+    mqMobile.addEventListener('change', () => { app.classList.remove('sb-open'); definirTelaCheia(false); initSidebar(); });
     function initSidebar() {
       if (mqMobile.matches) { app.classList.remove('sb-collapsed'); definirSidebar(false); return; }
       let aberta = true; try { aberta = localStorage.getItem('inhire_sb_aberta') !== '0'; } catch (e) {}
@@ -1068,7 +1313,8 @@
       const btnPrincipal = rem
         ? `<button type="button" class="btn btn-warn btn-sm btn-main" data-action="acao-principal" data-i="${i}">${icon('swap')}<span>Remanejar alocação</span></button>`
         : `<button type="button" class="btn btn-ok btn-sm btn-main" data-action="acao-principal" data-i="${i}">${icon('plus')}<span>Adicionar ao projeto</span></button>`;
-      return `<article class="cand">
+      
+      return `<article class="cand" data-action="ver-perfil" data-ctx="busca" data-i="${i}">
         <div class="cand-top">
           <span class="rank" title="Posição no ranking">${esc(cand.posicao ?? i + 1)}</span>
           <div class="cand-info">
@@ -1127,10 +1373,137 @@
       container.innerHTML = grupo('Profissionais internos', 'int', internos) + grupo('Profissionais externos', 'ext', externos);
     }
 
-    function alocarDiretoCand(cand) {
-      toast(`Talento ${cand.nome} adicionado diretamente ao projeto, pois possui disponibilidade suficiente!`, { tipo: 'success', titulo: 'Alocação direta' });
+    // ==========================================
+    // 6. NOVA ALOCAÇÃO EFETIVA
+    // ==========================================
+    function abrirModalAlocacaoCand(cand) {
+      const livreAtual = num(cand.tempo_livre ?? cand.disponibilidade ?? cand.disponibilidade_media ?? 0);
+      if (livreAtual <= 0) {
+        toast(`Profissional sem disponibilidade livre. Iniciando fluxo de remanejamento.`, { tipo: 'warn' });
+        abrirModalRemanejarCand(cand);
+        return;
+      }
+      candidatoRem = cand;
+      $('aloc-id-colab').value = cand.id ?? cand.id_colaborador ?? cand.id_talento;
+      $('aloc-disp-atual').value = livreAtual;
+      $('aloc-nome').textContent = cand.nome;
+      $('aloc-avatar').textContent = iniciais(cand.nome);
+      $('aloc-avatar').style.setProperty('--h', hue(cand.nome));
+      $('aloc-disp').textContent = `${livreAtual}%`;
+      $('aloc-pct').value = Math.min(livreAtual, 50);
+      
+      popularSelectDemandasAlocacao();
+      previewDisponibilidade();
+      $('aloc-erro-geral').innerHTML = '';
+      mudarAbaAlocacao('existente');
+      abrirModal('modal-alocar', 'aloc-pct');
     }
-    function alocarDireto(index) { alocarDiretoCand(ultimoRanking[index]); }
+
+    function alocarDiretoCand(cand) { abrirModalAlocacaoCand(cand); }
+    function alocarDireto(index) { alocarDiretoCand(ultimoRanking[index] || dashVisiveis[index]); }
+
+    function mudarAbaAlocacao(tipo) {
+      $('aloc-tipo').value = tipo;
+      $('tab-aloc-existente').classList.toggle('active', tipo === 'existente');
+      $('tab-aloc-nova').classList.toggle('active', tipo === 'nova');
+      $('view-aloc-existente').classList.toggle('hidden', tipo === 'nova');
+      $('view-aloc-nova').classList.toggle('hidden', tipo === 'existente');
+    }
+
+    function previewDisponibilidade() {
+      const dispAtual = Number($('aloc-disp-atual').value);
+      const digitado = Number($('aloc-pct').value);
+      const btn = $('btn-confirmar-aloc');
+      const preview = $('aloc-preview');
+
+      if (digitado <= 0 || digitado > 100) {
+        preview.textContent = "Inválido"; preview.style.color = '#fb7185';
+        btn.disabled = true;
+      } else if (digitado > dispAtual) {
+        preview.textContent = "Ultrapassa limite"; preview.style.color = '#fb7185';
+        btn.disabled = true;
+      } else {
+        const restante = dispAtual - digitado;
+        preview.textContent = `${restante}% restantes`;
+        preview.style.color = restante === 0 ? '#fcd34d' : '#6ee7b7';
+        btn.disabled = false;
+      }
+    }
+
+    async function popularSelectDemandasAlocacao() {
+      const sel = $('aloc-demanda-select');
+      const montar = () => {
+        sel.innerHTML = '<option value="">-- Escolha a Demanda --</option>' + 
+          (demandasCache || []).map(d => `<option value="${esc(d.id)}">${esc(d.nome)} (ID: ${esc(d.id)})</option>`).join('');
+      };
+      if (demandasCache) return montar();
+      try {
+        const t = await (await fetch(ENDPOINTS.DEMANDAS)).text();
+        demandasCache = lista(t ? JSON.parse(t) : []);
+        montar();
+      } catch (e) { sel.innerHTML = '<option value="">Falha ao listar demandas</option>'; }
+    }
+
+    async function efetivarAlocacao() {
+      const tipo = $('aloc-tipo').value;
+      const pct = Number($('aloc-pct').value);
+      const dispAtual = Number($('aloc-disp-atual').value);
+      
+      const payload = {
+        id_colaborador: $('aloc-id-colab').value,
+        percentual: pct,
+        mes: MESES[new Date().getMonth()],
+        ano: new Date().getFullYear()
+      };
+
+      if (pct <= 0 || pct > dispAtual) {
+        toast("Percentual inválido ou indisponível.", { tipo: 'warn' }); return;
+      }
+
+      if (tipo === 'existente') {
+        payload.id_demanda = $('aloc-demanda-select').value;
+        if (!payload.id_demanda) { $('err-aloc-demanda-select').textContent = "Selecione a demanda."; return; }
+        else $('err-aloc-demanda-select').textContent = "";
+      } else {
+        payload.nova_demanda_nome = $('aloc-nova-nome').value.trim();
+        payload.nova_demanda_inicio = $('aloc-nova-inicio').value;
+        payload.nova_demanda_fim = $('aloc-nova-fim').value;
+        
+        let erro = false;
+        if (!payload.nova_demanda_nome) { $('err-aloc-nova-nome').textContent = "Nome obrigatório."; erro = true; } else $('err-aloc-nova-nome').textContent = "";
+        if (!payload.nova_demanda_inicio) { $('err-aloc-nova-inicio').textContent = "Início obrigatório."; erro = true; } else $('err-aloc-nova-inicio').textContent = "";
+        if (payload.nova_demanda_fim && new Date(payload.nova_demanda_fim) < new Date(payload.nova_demanda_inicio)) {
+          $('aloc-erro-geral').innerHTML = `<span>Término não pode ser anterior ao início.</span>`; erro = true;
+        }
+        if (erro) return;
+      }
+
+      const btn = $('btn-confirmar-aloc');
+      setLoading(btn, true, 'Registrando...');
+      $('aloc-erro-geral').innerHTML = '';
+
+      try {
+        await requisitar(ENDPOINTS.ALOCAR, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        fecharModal('modal-alocar');
+        toast(`Profissional alocado com sucesso! Disponibilidade restante: ${dispAtual - pct}%.`, { tipo: 'success', duracao: 6000 });
+        
+        // Atualiza a tela limpando caches
+        demandasCache = null; dashPessoas = null; $('grid-demandas').dataset.carregado = '';
+        carregarDashboard();
+        if (ultimaBuscaFeita) executarBusca();
+      } catch (e) {
+        console.error(e);
+        $('aloc-erro-geral').innerHTML = `${icon('alert')}<span>Erro na alocação: ${esc(msgErro(e))}</span>`;
+        toast("Falha ao registrar alocação no banco.", { tipo: 'error' });
+      } finally {
+        setLoading(btn, false);
+      }
+    }
+
 
     // ==========================================
     // 2. DASHBOARD COM DADOS REAIS DO POSTGRESQL
@@ -1207,6 +1580,8 @@
       $('th-nome').setAttribute('aria-sort', campo === 'nome' ? (dir === 'asc' ? 'ascending' : 'descending') : 'none');
       $('th-disp').setAttribute('aria-sort', campo === 'disp' ? (dir === 'asc' ? 'ascending' : 'descending') : 'none');
 
+      dashVisiveis = itens; // Snapshot para clique do modal
+
       const media = dashPessoas.length ? Math.round(dashPessoas.reduce((s, p) => s + Number(p.disponibilidade), 0) / dashPessoas.length) : 0;
       $('dash-contagem').textContent = `Exibindo ${itens.length} de ${dashPessoas.length} • Disponibilidade média: ${media}%`;
 
@@ -1219,11 +1594,12 @@
         tabela.innerHTML = `<tr><td colspan="4" class="td-full">${estado({ icone: 'search', compacto: true, titulo: 'Nada encontrado com estes filtros', extra: `<button type="button" class="btn btn-ghost btn-sm" data-action="dash-limpar-filtros">Limpar filtros</button>` })}</td></tr>`;
         return;
       }
-      tabela.innerHTML = itens.map(p => {
+      tabela.innerHTML = itens.map((p, idx) => {
         const d = Number(p.disponibilidade);
         const livre = d === 100;
         const skills = listaTexto(p.skills);
-        return `<tr>
+        // Cada linha clicável com sua ação global do modal
+        return `<tr data-action="ver-perfil" data-ctx="dash" data-i="${idx}">
           <td data-label="Profissional"><div class="person">${avatar(p.nome)}<span class="p-name">${esc(p.nome)}</span></div></td>
           <td data-label="Cargo / Senioridade"><div>${esc(p.cargo) || '-'}</div>${p.senioridade ? `<div class="p-sub">${esc(p.senioridade)}</div>` : ''}</td>
           <td data-label="Principais skills"><div class="tags" title="${esc(skills.join(', '))}">${skills.length
@@ -1278,7 +1654,9 @@
       $('dem-contagem').textContent = `${itens.length} de ${todas.length} ${todas.length === 1 ? 'demanda' : 'demandas'}`;
       if (!todas.length) { grid.style.display = 'block'; grid.innerHTML = estado({ icone: 'folder', titulo: 'Nenhuma demanda ativa', texto: 'Quando houver projetos em andamento, eles aparecerão aqui com os profissionais alocados.' }); return; }
       if (!itens.length) { grid.style.display = 'block'; grid.innerHTML = estado({ icone: 'search', titulo: 'Nenhuma demanda encontrada', texto: 'Ajuste o termo de busca.' }); return; }
-      grid.innerHTML = itens.map(d => {
+      
+      grid.innerHTML = itens.map((d) => {
+        const dIndex = demandasCache.indexOf(d); // resgata o ID original no cache global p/ modal
         const colabs = lista(d.colaboradores);
         const total = d.pessoas ?? colabs.length;
         const LIM = 6;
@@ -1289,8 +1667,8 @@
           </div>
           <p class="period">${icon('clock')}<span><b>${esc(fmtData(d.inicio))}</b> até <b>${esc(fmtData(d.termino))}</b></span></p>
           <div>
-            <p class="eyebrow" style="margin-bottom:8px">Profissionais (${esc(total)}) • Exibindo ${Math.min(colabs.length, LIM)}${colabs.length > LIM ? ` de ${esc(total)}` : ''}</p>
-            ${colabs.length ? `<ul class="people">${colabs.map((p, k) => `<li class="${k >= LIM ? 'more-hidden' : ''}">${avatar(p.nome, true)}<span>${esc(p.nome)}</span></li>`).join('')}</ul>
+            <p class="eyebrow" style="margin-bottom:8px">Profissionais (${esc(total)})</p>
+            ${colabs.length ? `<ul class="people">${colabs.map((p, k) => `<li class="${k >= LIM ? 'more-hidden' : ''}" data-action="ver-perfil" data-ctx="demanda" data-di="${dIndex}" data-ci="${k}">${avatar(p.nome, true)}<span>${esc(p.nome)}</span></li>`).join('')}</ul>
               ${colabs.length > LIM ? `<button type="button" class="link-btn" data-action="dem-mais" aria-expanded="false" data-total="${colabs.length - LIM}">Ver mais ${colabs.length - LIM}</button>` : ''}`
               : '<p class="empty-line">Ninguém alocado.</p>'}
           </div>
@@ -1371,7 +1749,7 @@
       div.innerHTML = favoritosVisiveis.map((x, i) => {
         const interno = /interno|sgd/i.test(String(x.origem || ''));
         const score = x.score_ranking, disp = x.disponibilidade_media;
-        return `<article class="card fav">
+        return `<article class="card fav" data-action="ver-perfil" data-ctx="fav" data-i="${i}">
           <div class="fav-top">${avatar(x.nome_profissional)}
             <div style="min-width:0">
               <h3>${esc(x.nome_profissional)}</h3>
@@ -1384,28 +1762,14 @@
             ${disp !== undefined && disp !== null ? `<span class="badge warn">Disp. ${esc(disp)}%</span>` : ''}
           </div>
           <div class="fav-actions">
-            <button type="button" class="btn btn-ghost btn-sm" data-action="fav-detalhes" data-i="${i}">${icon('eye')}<span>Ver informações</span></button>
+            <!-- Os botões internos não disparam o evento da Article Card por conta do prevent padrão/delegação -->
+            <button type="button" class="btn btn-ghost btn-sm" data-action="ver-perfil" data-ctx="fav" data-i="${i}">${icon('eye')}<span>Ver informações</span></button>
             <button type="button" class="btn btn-danger btn-sm" data-action="fav-remover" data-i="${i}">${icon('trash')}<span>Remover</span></button>
           </div>
         </article>`;
       }).join('');
     }
 
-    const ROTULOS = {
-      nome_profissional: 'Nome', cargo: 'Cargo', senioridade: 'Senioridade', origem: 'Origem',
-      score_ranking: 'Aderência registrada (%)', disponibilidade_media: 'Disponibilidade registrada (%)',
-      id_profissional: 'ID do profissional', id_gerente: 'ID do gerente', id: 'ID do registro'
-    };
-    function mostrarDetalhesFavorito(x) {
-      $('det-titulo').textContent = x.nome_profissional || 'Detalhes do favorito';
-      $('det-sub').textContent = [x.cargo, x.senioridade].filter(Boolean).join(' • ');
-      $('det-corpo').innerHTML = Object.entries(x).map(([k, v]) => {
-        const val = (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
-        const rot = ROTULOS[k] || k.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
-        return `<div><dt>${esc(rot)}</dt><dd>${val === '' || val === null || val === undefined ? '—' : esc(val)}</dd></div>`;
-      }).join('');
-      abrirModal('modal-detalhes');
-    }
     async function removerFavorito(x) {
       const ok = await confirmar({
         titulo: 'Remover dos favoritos?',
@@ -1427,7 +1791,7 @@
     function abrirModalRemanejarCand(cand) {
       candidatoRem = cand;
       remTentou = false; remToques.clear();
-      $('rem-id-colab').value = cand.id;
+      $('rem-id-colab').value = cand.id ?? cand.id_colaborador ?? cand.id_talento;
       $('rem-nome').textContent = cand.nome;
       $('rem-avatar').textContent = iniciais(cand.nome);
       $('rem-avatar').style.setProperty('--h', hue(cand.nome));
@@ -1444,24 +1808,24 @@
       $('rem-mes').value = MESES[hoje.getMonth()];
       $('rem-ano').value = hoje.getFullYear();
       $('rem-erro-geral').innerHTML = '';
-      popularListaDemandas();
+      popularListaDemandas('rem-demanda-lista', 'rem-lista-wrap');
       renderRemValidacao();
       abrirModal('modal-remanejar', 'rem-demanda-antiga');
     }
 
-    async function popularListaDemandas() {
-      const sel = $('rem-demanda-lista');
+    async function popularListaDemandas(selId, wrapId) {
+      const sel = $(selId);
       const montar = () => {
         sel.innerHTML = '<option value="">Selecione para preencher o ID…</option>' + (demandasCache || []).map(d => `<option value="${esc(d.id)}">${esc(d.nome)} (ID ${esc(d.id)})</option>`).join('');
-        $('rem-lista-wrap').classList.toggle('hidden', !(demandasCache && demandasCache.length));
+        $(wrapId).classList.toggle('hidden', !(demandasCache && demandasCache.length));
       };
       if (demandasCache) return montar();
-      $('rem-lista-wrap').classList.add('hidden');
+      $(wrapId).classList.add('hidden');
       try {
         const t = await (await fetch(ENDPOINTS.DEMANDAS)).text();
         demandasCache = lista(t ? JSON.parse(t) : []);
         montar();
-      } catch (e) { /* lista é opcional: o ID continua podendo ser digitado */ }
+      } catch (e) { /* opcional */ }
     }
 
     function validarRemanejamento() {
@@ -1496,7 +1860,6 @@
         out.innerHTML = msg ? `${icon('alert', '" style="width:14px;height:14px;margin-top:2px')}<span>${esc(msg)}</span>` : '';
         if (msg) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
       });
-      // Resumo do que será alterado
       const c = candidatoRem || {};
       const nome = esc(c.nome ?? '');
       const sel = $('rem-demanda-antiga');
@@ -1621,7 +1984,7 @@
           const melhorA = n > 1 && aders[i] !== null && aders[i] === maxA;
           const melhorL = n > 1 && livres[i] !== null && livres[i] === maxL;
           const skills = listaTexto(c.skills_atendidas);
-          return `<article class="card cmp-card ${melhorA && melhorL ? 'best-any' : ''}">
+          return `<article class="card cmp-card ${melhorA && melhorL ? 'best-any' : ''}" data-action="ver-perfil" data-ctx="comp" data-i="${i}">
             <div class="cmp-head">
               <div style="display:flex;gap:12px;align-items:flex-start;min-width:0">${avatar(c.nome)}<div style="min-width:0"><h3>${esc(c.nome)}</h3>
                 <div class="badges"><span class="badge ${tipoInterno(c) ? 'int' : 'ext'}">${tipoInterno(c) ? 'Interno (SGD)' : 'Externo'}</span></div></div></div>
@@ -1650,12 +2013,16 @@
     // NAVEGAÇÃO DE ABAS
     // ==========================================
     function mudarAba(abaId) {
+      const chatAtivo = abaId === 'chat';
+      $('app').classList.toggle('chat-primary', chatAtivo);
       ABAS.forEach(a => {
         const sec = $(`sec-${a}`), tab = $(`tab-${a}`), on = a === abaId;
-        sec.classList.toggle('hidden', !on);
-        tab.classList.toggle('active', on);
-        tab.setAttribute('aria-selected', String(on));
-        tab.tabIndex = on ? 0 : -1;
+        if (sec) sec.classList.toggle('hidden', !on);
+        if (tab) {
+          tab.classList.toggle('active', on);
+          tab.setAttribute('aria-selected', String(on));
+          tab.tabIndex = on ? 0 : -1;
+        }
       });
       $('content').scrollTop = 0;
       if (abaId === 'dashboard') carregarDashboard();
@@ -1665,27 +2032,31 @@
     }
 
     // ==========================================
-    // EVENTOS (delegação)
+    // EVENTOS (delegação central)
     // ==========================================
     document.addEventListener('click', async e => {
       const el = e.target.closest('[data-action]');
       if (!el || el.disabled) return;
       const a = el.dataset.action;
       const i = el.dataset.i !== undefined ? Number(el.dataset.i) : null;
+      
       switch (a) {
         case 'toggle-sidebar': definirSidebar(!sidebarAberta()); break;
+        case 'toggle-full': definirTelaCheia(!app.classList.contains('sb-full')); break;
         case 'abrir-sidebar': definirSidebar(true); setTimeout(() => $('input-ia').focus(), 260); break;
         case 'fechar-sidebar': definirSidebar(false); break;
         case 'focar-busca': focarBusca(); break;
         case 'exemplo': $('input-ia').value = el.dataset.texto; $('input-ia').focus(); break;
         case 'buscar': executarBusca(); break;
         case 'aba': mudarAba(el.dataset.aba); break;
+        
         case 'acao-principal': {
           const c = ultimoRanking[i]; if (!c) break;
           precisaRemanejar(c) ? abrirModalRemanejar(i) : alocarDireto(i); break;
         }
         case 'favoritar': salvarFavorito(i, el); break;
         case 'comparar': toggleComparar(i); break;
+        
         case 'cmp-remover':
           selecionadosComparacao = selecionadosComparacao.filter(s => candKey(s) !== el.dataset.key);
           sincronizarBotoesComparar(); renderizarComparacao(); break;
@@ -1699,9 +2070,11 @@
         case 'cmp-fav': {
           const c = selecionadosComparacao.find(s => candKey(s) === el.dataset.key); if (c) salvarFavoritoCand(c, el); break;
         }
+        
         case 'recarregar-dashboard': carregarDashboard(); break;
         case 'recarregar-demandas': carregarDemandas(); break;
         case 'recarregar-favoritos': carregarFavoritos(); break;
+        
         case 'dash-limpar-filtros':
           $('dash-busca').value = ''; $('dash-filtro').value = 'todos'; renderTabelaBench(); break;
         case 'dash-sort': {
@@ -1709,14 +2082,37 @@
           $('dash-ordem').value = campo === 'nome' ? (c === 'nome' && d === 'asc' ? 'nome-desc' : 'nome-asc') : (c === 'disp' && d === 'desc' ? 'disp-asc' : 'disp-desc');
           renderTabelaBench(); break;
         }
+        
         case 'dem-mais': {
           const ul = el.previousElementSibling; const ex = ul.classList.toggle('expanded');
           el.setAttribute('aria-expanded', String(ex));
           el.textContent = ex ? 'Ver menos' : `Ver mais ${el.dataset.total}`; break;
         }
-        case 'fav-detalhes': favoritosVisiveis[i] && mostrarDetalhesFavorito(favoritosVisiveis[i]); break;
+        
         case 'fav-remover': favoritosVisiveis[i] && removerFavorito(favoritosVisiveis[i]); break;
         case 'fav-restaurar': ocultos.clear(); salvarOcultos(); renderFavoritos(); break;
+        
+        case 'ver-perfil': {
+          const ctx = el.dataset.ctx;
+          let prof = null;
+          
+          if (ctx === 'busca') prof = ultimoRanking[i];
+          else if (ctx === 'dash') prof = dashVisiveis[i];
+          else if (ctx === 'comp') prof = selecionadosComparacao[i];
+          else if (ctx === 'fav') prof = favoritosVisiveis[i];
+          else if (ctx === 'demanda') {
+            const di = num(el.dataset.di);
+            const ci = num(el.dataset.ci);
+            if (demandasCache && demandasCache[di] && demandasCache[di].colaboradores) {
+              prof = demandasCache[di].colaboradores[ci];
+            }
+          }
+          if (prof) abrirDetalhesProfissional(prof);
+          break;
+        }
+
+        case 'confirmar-alocacao': efetivarAlocacao(); break;
+
         case 'fechar-modal': fecharModal(el.dataset.modalId); break;
         case 'confirmar-remanejar': confirmarRemanejamento(); break;
         case 'confirm-ok': resolverConfirm(true); break;
@@ -1724,16 +2120,16 @@
       }
     });
 
-    // Busca por formulário (Enter no botão) e Ctrl+Enter no campo
+    // Busca por formulário
     $('form-busca').addEventListener('submit', e => { e.preventDefault(); executarBusca(); });
     $('input-ia').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('form-busca').requestSubmit(); } });
     $('modo-disp').addEventListener('change', atualizarDicaModo);
 
-    // Filtros do dashboard e das demandas
+    // Filtros
     ['dash-busca', 'dash-filtro', 'dash-ordem'].forEach(id => $(id).addEventListener(id === 'dash-busca' ? 'input' : 'change', renderTabelaBench));
     $('dem-busca').addEventListener('input', () => demandasCache && renderDemandas());
 
-    // Modal de remanejamento: validação ao vivo e bloqueio de entradas inválidas
+    // Modais Live Validation (Remanejar)
     const formRem = $('form-remanejar');
     formRem.addEventListener('submit', e => { e.preventDefault(); confirmarRemanejamento(); });
     formRem.addEventListener('input', e => { if (e.target.id) remToques.add(e.target.id); renderRemValidacao(); });
@@ -1746,7 +2142,7 @@
       if (e.target.value) { $('rem-demanda-nova').value = e.target.value; remToques.add('rem-demanda-nova'); renderRemValidacao(); }
     });
 
-    // Setas do teclado entre abas
+    // Navegação (Setas Keyboard)
     $('tab-dashboard').parentElement.addEventListener('keydown', e => {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
       const tabs = ABAS.map(a => $(`tab-${a}`));
@@ -1760,7 +2156,7 @@
       initSidebar();
       atualizarDicaModo();
       renderizarComparacao();
-      carregarDashboard();
+      mudarAba('chat');
     };
   </script>
 </body>
