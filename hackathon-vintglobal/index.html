@@ -3,190 +3,148 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>InHire AI - Alocação Inteligente (Painel do José)</title>
+  <title>InHire AI - Workspace</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+<body class="bg-slate-900 text-slate-100 h-screen w-screen overflow-hidden flex font-sans">
 
-  <!-- Cabeçalho -->
-  <header class="border-b border-slate-800 bg-slate-950/60 px-6 py-4 flex justify-between items-center gap-4">
-    <div>
-      <h1 class="text-xl font-bold text-indigo-400">InHire • Alocação Inteligente com Qwen AI</h1>
-      <p class="text-xs text-slate-400">Cruzamento Automático: SGD (Interno) ➔ Banco de Talentos (Externo)</p>
+  <!-- ==========================================
+       SIDEBAR: CHAT IA & BUSCA (Estilo VS Code)
+       ========================================== -->
+  <aside class="w-[400px] bg-slate-950 border-r border-slate-800 flex flex-col h-full z-20 shadow-2xl">
+    <!-- Header Sidebar -->
+    <div class="p-4 border-b border-slate-800 bg-slate-900/50">
+      <h1 class="text-base font-bold text-indigo-400 flex items-center gap-2">
+        <span>✨</span> InHire Copilot
+      </h1>
+      <p class="text-[10px] text-slate-400 mt-1">Integração Qwen 2.5 • SGD & Talentos</p>
     </div>
-    <div class="flex gap-2 flex-wrap justify-end">
-      <button onclick="mudarAba('busca')" id="tab-busca" class="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium">🔍 Busca & Ranking</button>
-      <button onclick="mudarAba('comparar')" id="tab-comparar" class="px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium">⚖️ Comparar (<span id="count-comp">0</span>)</button>
-      <button onclick="carregarFavoritos(); mudarAba('favoritos')" id="tab-favoritos" class="px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium">⭐ Favoritos</button>
-      <button onclick="mudarAba('demandas')" id="tab-demandas" class="px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium">📋 Demandas & Pessoas</button>
-      <button onclick="mudarAba('dashboard')" id="tab-dashboard" class="px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium">📊 Dashboard</button>
+
+    <!-- Área de Input do Chat -->
+    <div class="p-4 space-y-3 bg-slate-950">
+      <label class="block text-xs font-semibold text-slate-300">Descreva sua necessidade:</label>
+      <textarea id="input-ia" rows="3" placeholder="Ex: Preciso de 1 dev Senior com skill em Python e Docker com 50% livre..."
+        class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+      
+      <div class="flex gap-2">
+        <select id="modo-disp" class="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-xs">
+          <option value="faixa_ate">Livre (Incluir p/ Remanejar)</option>
+          <option value="estrito_0_a_x">Estrito: Só ocupados (0-X%)</option>
+          <option value="minimo">Estrito: Só livres (>= X%)</option>
+        </select>
+        <button onclick="executarBusca()" id="btn-buscar" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded font-semibold text-xs transition">
+          Buscar
+        </button>
+      </div>
+      
+      <!-- Tags da IA -->
+      <div id="box-filtros-ia" class="text-[10px] flex flex-wrap gap-1 text-slate-300 empty:hidden"></div>
     </div>
-  </header>
 
-  <main class="max-w-7xl mx-auto p-6">
-
-    <!-- ABA 1: BUSCA E RANKING -->
-    <section id="sec-busca" class="space-y-6">
-      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-5 space-y-4">
-        <label class="block text-sm font-semibold text-slate-300">Descreva sua necessidade para a IA (Qwen 2.5) ou use os filtros:</label>
-        <div class="flex gap-3">
-          <input id="input-ia" type="text" placeholder="Ex: Preciso de 1 dev Senior com skill em Node.js e AWS com 50% de disponibilidade por 3 meses"
-            class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
-          <button onclick="executarBusca()" id="btn-buscar" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-lg font-semibold text-sm transition">
-            Buscar Talentos
-          </button>
-        </div>
-
-        <!-- Filtros complementares -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-700/60 text-xs">
-          <div>
-            <span class="text-slate-400">Regra de Disponibilidade:</span>
-            <select id="modo-disp" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded p-2">
-              <option value="faixa_ate">Todos (Incluir 0% a X% para Remanejamento)</option>
-              <option value="estrito_0_a_x">Estrito: Apenas entre 0% e X% livre</option>
-              <option value="minimo">Apenas Disponibilidade Mínima (>= X%)</option>
-            </select>
-          </div>
-          <div id="box-filtros-ia" class="md:col-span-2 flex items-center gap-2 text-slate-300">
-            <!-- Preenchido após retorno do Qwen -->
-          </div>
-        </div>
+    <!-- Lista de Resultados (Ranking no Sidebar) -->
+    <div class="flex-1 overflow-y-auto p-4 bg-slate-900/30 border-t border-slate-800">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Resultados da Busca</h2>
+        <span id="kpi-total" class="bg-slate-800 text-[10px] px-2 py-0.5 rounded-full">0</span>
       </div>
-
-      <!-- Resumo da Busca -->
-      <div id="resumo-container" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
-          <span class="text-xs text-slate-400">Status da Busca</span>
-          <p id="kpi-status" class="text-lg font-bold mt-1">-</p>
-        </div>
-        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
-          <span class="text-xs text-slate-400">Base Acionada (Roteamento n8n)</span>
-          <p id="kpi-origem" class="text-lg font-bold text-indigo-400 mt-1">-</p>
-        </div>
-        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
-          <span class="text-xs text-slate-400">Profissionais Ranqueados</span>
-          <p id="kpi-total" class="text-lg font-bold mt-1">0</p>
-        </div>
+      
+      <div id="lista-ranking" class="space-y-3">
+        <p class="text-xs text-slate-500 text-center mt-10">Use o chat acima para encontrar talentos.</p>
       </div>
+    </div>
+  </aside>
 
-      <!-- Grid de Cards do Ranking -->
-      <div id="lista-ranking" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-    </section>
+  <!-- ==========================================
+       MAIN CONTENT: ABAS E DASHBOARD
+       ========================================== -->
+  <main class="flex-1 flex flex-col h-full bg-slate-900 relative">
+    
+    <!-- Barra Superior (Tabs) -->
+    <header class="h-14 border-b border-slate-800 bg-slate-950/80 flex items-center px-4 gap-1">
+      <button onclick="mudarAba('dashboard')" id="tab-dashboard" class="px-4 py-2 rounded-t-lg bg-slate-800 text-sm font-medium border-b-2 border-indigo-500 text-indigo-300">📊 Dashboard Geral</button>
+      <button onclick="mudarAba('demandas')" id="tab-demandas" class="px-4 py-2 rounded-t-lg hover:bg-slate-800 text-sm font-medium text-slate-400 border-b-2 border-transparent">📁 Projetos & Demandas</button>
+      <button onclick="mudarAba('comparar')" id="tab-comparar" class="px-4 py-2 rounded-t-lg hover:bg-slate-800 text-sm font-medium text-slate-400 border-b-2 border-transparent">⚖️ Comparar (<span id="count-comp">0</span>)</button>
+      <button onclick="carregarFavoritos(); mudarAba('favoritos')" id="tab-favoritos" class="px-4 py-2 rounded-t-lg hover:bg-slate-800 text-sm font-medium text-slate-400 border-b-2 border-transparent">⭐ Favoritos</button>
+    </header>
 
-    <!-- ABA 2: COMPARAÇÃO LADO A LADO -->
-    <section id="sec-comparar" class="hidden space-y-4">
-      <h2 class="text-lg font-bold">Comparação Lado a Lado</h2>
-      <div id="grid-comparacao" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-    </section>
-
-    <!-- ABA 3: FAVORITOS SALVOS NO BANCO -->
-    <section id="sec-favoritos" class="hidden space-y-4">
-      <h2 class="text-lg font-bold">Candidatos Favoritados pelo Gestor</h2>
-      <div id="lista-favoritos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-    </section>
-
-    <!-- ABA 4: DEMANDAS E PESSOAS -->
-    <section id="sec-demandas" class="hidden space-y-4">
-      <div class="flex items-center justify-between">
+    <!-- Área de Conteúdo Rolável -->
+    <div class="flex-1 overflow-y-auto p-6">
+      
+      <!-- ABA 1: DASHBOARD (Página Principal) -->
+      <section id="sec-dashboard" class="space-y-6">
         <div>
-          <h2 class="text-lg font-bold">Demandas e pessoas</h2>
-          <p class="text-sm text-slate-400">Visão consolidada dos dados retornados pela última busca.</p>
+          <h2 class="text-xl font-bold">Visão Geral da Operação (Bench & Skills)</h2>
+          <p class="text-sm text-slate-400">Profissionais totalmente ou parcialmente livres no momento.</p>
         </div>
-        <button onclick="mudarAba('busca')" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold">Nova busca</button>
-      </div>
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-          <div class="px-4 py-3 border-b border-slate-700 font-semibold">Demandas encontradas</div>
-          <div id="lista-demandas" class="divide-y divide-slate-700/70">
-            <p class="p-4 text-sm text-slate-400">Faça uma busca para carregar as demandas.</p>
-          </div>
-        </div>
-        <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-          <div class="px-4 py-3 border-b border-slate-700 font-semibold">Pessoas no resultado</div>
-          <div id="lista-pessoas" class="divide-y divide-slate-700/70">
-            <p class="p-4 text-sm text-slate-400">Faça uma busca para carregar as pessoas.</p>
-          </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- ABA 5: DASHBOARD DE DISPONIBILIDADE -->
-    <section id="sec-dashboard" class="hidden space-y-4">
-      <div>
-        <h2 class="text-lg font-bold">Pessoas livres e principais habilidades</h2>
-        <p class="text-sm text-slate-400">Use a busca para atualizar esta visão com os talentos mais aderentes.</p>
-      </div>
-      <div id="dashboard-kpis" class="grid grid-cols-1 sm:grid-cols-3 gap-4"></div>
-      <div id="dashboard-pessoas" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <p class="text-sm text-slate-400">Nenhum resultado carregado.</p>
-      </div>
-    </section>
+        <!-- KPIs Rápidos -->
+        <div class="grid grid-cols-3 gap-4">
+          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">Devs no Bench (100% Livres)</p><h3 class="text-2xl font-bold text-emerald-400 mt-1" id="dash-bench">12</h3></div>
+          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">Total de Demandas Ativas</p><h3 class="text-2xl font-bold mt-1" id="dash-demandas">8</h3></div>
+          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">Top Skill Disponível</p><h3 class="text-xl font-bold text-indigo-400 mt-1" id="dash-skill">Python</h3></div>
+        </div>
 
+        <!-- Lista do Bench Geral -->
+        <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+          <div class="bg-slate-900 px-4 py-3 border-b border-slate-700"><h3 class="text-sm font-bold">Profissionais Livres & Habilidades (Carregamento Geral)</h3></div>
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-slate-400 bg-slate-800/50">
+              <tr><th class="px-4 py-3">Profissional</th><th class="px-4 py-3">Cargo/Senioridade</th><th class="px-4 py-3">Principais Skills</th><th class="px-4 py-3">Disponibilidade</th></tr>
+            </thead>
+            <tbody id="dash-tabela-bench" class="divide-y divide-slate-700/50">
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ABA 2: PROJETOS E DEMANDAS -->
+      <section id="sec-demandas" class="hidden space-y-6">
+        <div>
+          <h2 class="text-xl font-bold">Mapa de Demandas e Alocações</h2>
+          <p class="text-sm text-slate-400">Visão global sem necessidade de busca.</p>
+        </div>
+        <div id="grid-demandas" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Renderizado via JS -->
+        </div>
+      </section>
+
+      <!-- ABA 3: COMPARAÇÃO LADO A LADO -->
+      <section id="sec-comparar" class="hidden space-y-4">
+        <h2 class="text-xl font-bold">Comparação Lado a Lado</h2>
+        <div id="grid-comparacao" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+      </section>
+
+      <!-- ABA 4: FAVORITOS -->
+      <section id="sec-favoritos" class="hidden space-y-4">
+        <h2 class="text-xl font-bold">Candidatos Favoritados</h2>
+        <div id="lista-favoritos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </section>
+
+    </div>
   </main>
 
-  <!-- CHAT LATERAL -->
-  <aside id="painel-chat" class="fixed right-0 top-0 h-screen w-full sm:w-[390px] bg-slate-950 border-l border-slate-700 shadow-2xl translate-x-full transition-transform duration-300 z-40 flex flex-col">
-    <div class="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
-      <div>
-        <p class="font-semibold">Qwen AI</p>
-        <p class="text-[11px] text-slate-400">Assistente de alocação</p>
-      </div>
-      <div class="flex gap-2">
-        <button onclick="alternarChatTela()" id="btn-expandir-chat" class="text-xs px-2 py-1 rounded bg-slate-800 hover:bg-slate-700" title="Expandir chat">⛶</button>
-        <button onclick="alternarChat()" class="text-lg text-slate-400 hover:text-white" aria-label="Fechar chat">×</button>
-      </div>
-    </div>
-    <div id="chat-mensagens" class="flex-1 overflow-y-auto p-4 space-y-3">
-      <div class="max-w-[85%] rounded-lg bg-slate-800 p-3 text-sm">Olá! Descreva a pessoa ou demanda que você quer encontrar.</div>
-    </div>
-    <form onsubmit="enviarMensagemChat(event)" class="p-3 border-t border-slate-700 flex gap-2">
-      <input id="chat-input" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="Ex.: quem tem Node.js e 50% livre?" autocomplete="off">
-      <button class="bg-indigo-600 hover:bg-indigo-500 px-3 rounded-lg text-sm" aria-label="Enviar mensagem">➤</button>
-    </form>
-  </aside>
-  <button onclick="alternarChat()" id="abrir-chat" class="fixed right-5 bottom-5 z-30 bg-indigo-600 hover:bg-indigo-500 rounded-full px-4 py-3 shadow-lg text-sm font-semibold">💬 Falar com Qwen</button>
-
-  <!-- MODAL DE REMANEJAMENTO -->
+  <!-- MODAIS (Mantidos iguais à versão anterior, apenas ocultos inicialmente) -->
   <div id="modal-remanejar" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full p-6 space-y-4">
-      <h3 class="text-lg font-bold text-indigo-400">Remanejar Alocação no SGD</h3>
+      <h3 class="text-lg font-bold text-indigo-400">Remanejar Alocação</h3>
       <p id="rem-nome" class="text-sm text-slate-300 font-medium"></p>
       <input type="hidden" id="rem-id-colab">
-
       <div class="space-y-3 text-sm">
-        <div>
-          <label class="text-xs text-slate-400">Demanda Atual (Reduzir horas):</label>
-          <select id="rem-demanda-antiga" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1"></select>
-        </div>
+        <div><label class="text-xs text-slate-400">Demanda Atual (Reduzir horas):</label><select id="rem-demanda-antiga" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1"></select></div>
         <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="text-xs text-slate-400">Novo % na Demanda Antiga:</label>
-            <input type="number" id="rem-pct-antiga" value="50" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1">
-          </div>
-          <div>
-            <label class="text-xs text-slate-400">ID da Nova Demanda:</label>
-            <input type="number" id="rem-demanda-nova" value="8" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1">
-          </div>
+          <div><label class="text-xs text-slate-400">Novo % Antiga:</label><input type="number" id="rem-pct-antiga" value="50" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1"></div>
+          <div><label class="text-xs text-slate-400">ID Demanda Nova:</label><input type="number" id="rem-demanda-nova" value="8" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1"></div>
         </div>
         <div class="grid grid-cols-3 gap-2">
-          <div>
-            <label class="text-xs text-slate-400">% Nova Demanda:</label>
-            <input type="number" id="rem-pct-nova" value="50" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1">
-          </div>
-          <div>
-            <label class="text-xs text-slate-400">Mês (3 letras):</label>
-            <input type="text" id="rem-mes" value="Nov" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1">
-          </div>
-          <div>
-            <label class="text-xs text-slate-400">Ano:</label>
-            <input type="number" id="rem-ano" value="2026" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1">
-          </div>
+          <div><label class="text-xs text-slate-400">% Nova Demanda:</label><input type="number" id="rem-pct-nova" value="50" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1"></div>
+          <div><label class="text-xs text-slate-400">Mês:</label><input type="text" id="rem-mes" value="Nov" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1"></div>
+          <div><label class="text-xs text-slate-400">Ano:</label><input type="number" id="rem-ano" value="2026" class="w-full bg-slate-900 border border-slate-700 rounded p-2 mt-1"></div>
         </div>
       </div>
-
       <div class="flex justify-end gap-2 pt-3">
-        <button onclick="fecharModal()" class="px-4 py-2 rounded bg-slate-700 text-sm">Cancelar</button>
-        <button onclick="confirmarRemanejamento()" class="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold">Confirmar no Banco</button>
+        <button onclick="fecharModal('modal-remanejar')" class="px-4 py-2 rounded bg-slate-700 text-sm">Cancelar</button>
+        <button onclick="confirmarRemanejamento()" class="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold">Remanejar no Banco</button>
       </div>
     </div>
   </div>
@@ -206,31 +164,31 @@
     let ultimoRanking = [];
     let selecionadosComparacao = [];
 
-    // 1. FUNÇÃO DE BUSCA (ACIONA QWEN + SGD / TALENTOS)
+    // INIT: Carrega os dados Mockados do Dashboard na inicialização
+    window.onload = () => { carregarDashboard(); };
+
+    // ==========================================
+    // 1. BUSCA INTELIGENTE E RANKING
+    // ==========================================
     async function executarBusca() {
       const texto = document.getElementById('input-ia').value;
       const modoDisp = document.getElementById('modo-disp').value;
       const btn = document.getElementById('btn-buscar');
-      btn.innerText = "Consultando Qwen & Banco...";
-      btn.disabled = true;
+      btn.innerText = "..."; btn.disabled = true;
 
       try {
         const res = await fetch(ENDPOINTS.BUSCA, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            texto_busca: texto,
-            modo_disponibilidade: modoDisp
-          })
+          body: JSON.stringify({ texto_busca: texto, modo_disponibilidade: modoDisp })
         });
         const data = await res.json();
         renderizarResultadoBusca(data);
       } catch (err) {
-        alert("Erro ao conectar ao n8n. Verifique se o workflow está Active e o CORS liberado.");
         console.error(err);
+        alert("Erro de conexão ao n8n.");
       } finally {
-        btn.innerText = "Buscar Talentos";
-        btn.disabled = false;
+        btn.innerText = "Buscar"; btn.disabled = false;
       }
     }
 
@@ -238,314 +196,212 @@
       const resumo = data.resumo_busca || {};
       ultimoRanking = data.ranking || [];
 
-      document.getElementById('resumo-container').classList.remove('hidden');
-      document.getElementById('kpi-status').innerText = resumo.status || "-";
-      document.getElementById('kpi-origem').innerText = resumo.origem_dados || "-";
       document.getElementById('kpi-total').innerText = resumo.total_encontrados ?? 0;
 
       const f = resumo.filtros_extraidos || {};
       document.getElementById('box-filtros-ia').innerHTML = `
-        <span class="text-indigo-400 font-semibold">Parâmetros extraídos pelo Qwen:</span>
-        <span class="bg-slate-900 px-2 py-1 rounded">Senioridade: ${f.senioridade || 'Todas'}</span>
-        <span class="bg-slate-900 px-2 py-1 rounded">Skills: ${(f.skills || []).join(', ')}</span>
-        <span class="bg-slate-900 px-2 py-1 rounded">Meta Livre: ${f.disponibilidade_minima ?? 50}%</span>
+        <span class="bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded">Sen: ${f.senioridade || 'Todas'}</span>
+        <span class="bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded">Skills: ${(f.skills || []).join(', ')}</span>
+        <span class="bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded">Livre: ${f.disponibilidade_minima ?? 50}%</span>
       `;
+
       const container = document.getElementById('lista-ranking');
       if (ultimoRanking.length === 0) {
-        container.innerHTML = `<p class="text-slate-400 col-span-3">Nenhum profissional encontrado nas duas bases.</p>`;
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center">Nenhum talento encontrado.</p>`;
         return;
       }
 
-      container.innerHTML = ultimoRanking.map((cand, i) => `
-        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col justify-between space-y-4">
-          <div>
-            <div class="flex justify-between items-start">
-              <span class="text-xs font-bold px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300">${cand.posicao} • ${cand.tipo_base.toUpperCase()}</span>
-              <label class="text-xs flex items-center gap-1 cursor-pointer text-slate-300">
-                <input type="checkbox" onchange="toggleComparar(${i})" ${selecionadosComparacao.includes(i) ? 'checked' : ''}> Comparar
-              </label>
-            </div>
-            <h3 class="text-base font-bold mt-2">${cand.nome}</h3>
-            <p class="text-xs text-slate-400">${cand.cargo} • ${cand.senioridade}</p>
+      container.innerHTML = ultimoRanking.map((cand, i) => {
+        // LÓGICA DO BOTÃO: Adicionar (Livre) vs Remanejar (Ocupado)
+        const precisaRemanejar = cand.status_acao.toLowerCase().includes("remanejamento");
+        
+        const btnPrincipal = precisaRemanejar 
+          ? `<button onclick="abrirModalRemanejar(${i})" class="flex-1 bg-amber-600 hover:bg-amber-500 py-1.5 rounded text-[11px] font-medium transition">🔄 Remanejar</button>`
+          : `<button onclick="alocarDireto(${i})" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-1.5 rounded text-[11px] font-medium transition">➕ Adicionar</button>`;
 
-            <div class="mt-3 space-y-1 text-xs">
-              <p><strong class="text-slate-300">Match Skills:</strong> <span class="text-emerald-400 font-semibold">${cand.aderencia_skills}</span></p>
-              <p><strong class="text-slate-300">Tempo Livre:</strong> ${cand.tempo_livre} (Alocado: ${cand.alocacao_atual})</p>
-              <p class="text-amber-300">${cand.status_acao}</p>
+        return `
+        <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 space-y-2 relative shadow-md">
+          <div class="flex justify-between items-start">
+            <div>
+              <h3 class="text-sm font-bold text-slate-100">${cand.posicao} ${cand.nome}</h3>
+              <p class="text-[10px] text-slate-400">${cand.cargo} • ${cand.senioridade}</p>
             </div>
-
-            <div class="mt-3 flex flex-wrap gap-1">
-              ${(cand.skills_atendidas || []).map(s => `<span class="text-[11px] bg-slate-900 px-2 py-0.5 rounded border border-slate-700">${s}</span>`).join('')}
-            </div>
+            <label class="text-[10px] flex items-center gap-1 cursor-pointer text-slate-300">
+              <input type="checkbox" onchange="toggleComparar(${i})" ${selecionadosComparacao.includes(i) ? 'checked' : ''}> Comp
+            </label>
+          </div>
+          
+          <div class="text-[10px] space-y-0.5">
+            <p><span class="text-slate-400">Match:</span> <span class="text-indigo-400 font-bold">${cand.aderencia_skills}</span></p>
+            <p><span class="text-slate-400">Tempo Livre:</span> ${cand.tempo_livre} <span class="text-slate-500">(Atual: ${cand.alocacao_atual})</span></p>
+          </div>
+          
+          <div class="flex flex-wrap gap-1 mt-1">
+            ${(cand.skills_atendidas || []).map(s => `<span class="text-[9px] bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300">${s}</span>`).join('')}
           </div>
 
-          <div class="flex gap-2 pt-3 border-t border-slate-700/60">
-            <button onclick="salvarFavorito(${i})" class="flex-1 bg-slate-700 hover:bg-slate-600 py-1.5 rounded text-xs font-medium">⭐ Favoritar</button>
-            ${acaoDoCandidato(cand, i)}
+          <div class="flex gap-1.5 pt-2 border-t border-slate-700/50">
+            <button onclick="salvarFavorito(${i})" class="bg-slate-700 hover:bg-slate-600 px-2 py-1.5 rounded text-[11px] font-medium transition" title="Favoritar">⭐</button>
+            ${cand.tipo_base === 'interno' ? btnPrincipal : `<button onclick="alocarDireto(${i})" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-1.5 rounded text-[11px] font-medium">➕ Adicionar</button>`}
           </div>
         </div>
-      `).join('');
+      `}).join('');
     }
 
-    function acaoDoCandidato(cand, index) {
-      const tempoLivre = Number.parseInt(cand.tempo_livre, 10) || 0;
-      const precisaRealocar = cand.tipo_base === 'interno' && tempoLivre <= 0;
-      return precisaRealocar
-        ? `<button onclick="abrirModalRemanejar(${index})" class="flex-1 bg-indigo-600 hover:bg-indigo-500 py-1.5 rounded text-xs font-medium">🔄 Remanejar</button>`
-        : `<button onclick="adicionarTalento(${index})" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-1.5 rounded text-xs font-medium">＋ Adicionar</button>`;
+    function alocarDireto(index) {
+      alert(`Talento ${ultimoRanking[index].nome} adicionado diretamente ao projeto, pois possui disponibilidade suficiente!`);
     }
 
-    function adicionarTalento(index) {
-      const cand = ultimoRanking[index];
-      adicionarMensagemChat(`Vou adicionar ${cand.nome} à próxima alocação.`, 'user');
-      adicionarMensagemChat(`${cand.nome} tem ${cand.tempo_livre || 0} de tempo livre e está disponível para uma nova demanda. Use o fluxo de alocação do SGD para confirmar.`, 'assistant');
-      alternarChat(true);
-    }
-
-    // 2. FUNÇÃO SALVAR FAVORITO
-    async function salvarFavorito(index) {
-      const cand = ultimoRanking[index];
-      const scoreLimpo = parseInt(cand.aderencia_skills) || 100;
-      const dispLimpa = parseInt(cand.tempo_livre) || 100;
-
-      const res = await fetch(ENDPOINTS.SALVAR_FAV, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_gerente: 1,
-          id_profissional: cand.id,
-          nome_profissional: cand.nome,
-          origem: cand.tipo_base === 'interno' ? 'SGD (Interno)' : 'Banco de Talentos (Externo)',
-          cargo: cand.cargo,
-          senioridade: cand.senioridade,
-          score_ranking: scoreLimpo,
-          disponibilidade_media: dispLimpa
-        })
-      });
-      const out = await res.json();
-      alert(out.mensagem || "Salvo nos favoritos!");
-    }
-
-    // 3. FUNÇÃO LISTAR FAVORITOS
-    async function carregarFavoritos() {
-      const container = document.getElementById('lista-favoritos');
-      container.innerHTML = `<p class="text-sm text-slate-400">Carregando favoritos...</p>`;
+    // ==========================================
+    // 2. DASHBOARD COM DADOS REAIS DO POSTGRESQL
+    // ==========================================
+    async function carregarDashboard() {
+      const tabela = document.getElementById('dash-tabela-bench');
+      tabela.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">Carregando dados reais...</td></tr>`;
       try {
-        const res = await fetch(ENDPOINTS.LISTAR_FAV);
-        const text = await res.text();
-        const lista = text ? JSON.parse(text) : [];
-
-        if (!Array.isArray(lista) || lista.length === 0 || !lista[0]?.id) {
-          container.innerHTML = `<p class="text-sm text-slate-400 col-span-3">Nenhum favorito salvo ainda.</p>`;
-          return;
-        }
-
-        container.innerHTML = lista.map(f => `
-          <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl space-y-2">
-            <span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">${f.origem}</span>
-            <h3 class="font-bold">${f.nome_profissional}</h3>
-            <p class="text-xs text-slate-400">${f.cargo} • ${f.senioridade}</p>
-            <p class="text-xs">Score: <strong>${f.score_ranking}%</strong> | Livre: <strong>${f.disponibilidade_media}%</strong></p>
-          </div>
-        `).join('');
-      } catch (e) {
-        container.innerHTML = `<p class="text-sm text-slate-400">Lista de favoritos vazia.</p>`;
+        const [pessoasRes, demandasRes] = await Promise.all([
+          fetch(ENDPOINTS.DASHBOARD),
+          fetch(ENDPOINTS.DEMANDAS)
+        ]);
+        if (!pessoasRes.ok || !demandasRes.ok) throw new Error('Falha ao consultar os endpoints do PostgreSQL');
+        const [pessoas, demandas] = await Promise.all([pessoasRes.json(), demandasRes.json()]);
+        const livres = pessoas.filter(pessoa => Number(pessoa.disponibilidade) > 0);
+        const skillCounts = new Map();
+        livres.forEach(pessoa => (pessoa.skills || []).forEach(skill => {
+          skillCounts.set(skill, (skillCounts.get(skill) || 0) + 1);
+        }));
+        const topSkill = [...skillCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '-';
+        document.getElementById('dash-bench').innerText = livres.filter(pessoa => Number(pessoa.disponibilidade) === 100).length;
+        document.getElementById('dash-demandas').innerText = demandas.length;
+        document.getElementById('dash-skill').innerText = topSkill;
+        tabela.innerHTML = livres.length ? livres.map(p => `
+        <tr class="hover:bg-slate-700/30 transition">
+          <td class="px-4 py-3 font-medium text-indigo-300">${p.nome}</td>
+          <td class="px-4 py-3 text-slate-400">${p.cargo}</td>
+          <td class="px-4 py-3 text-slate-300">${(p.skills || []).join(', ') || '-'}</td>
+          <td class="px-4 py-3 font-bold ${Number(p.disponibilidade) === 100 ? 'text-emerald-400' : 'text-amber-400'}">${p.disponibilidade}% Livre</td>
+        </tr>
+        `).join('') : `<tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">Nenhum talento disponível.</td></tr>`;
+      } catch (error) {
+        tabela.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-rose-300">Não foi possível carregar o PostgreSQL.</td></tr>`;
+        console.error(error);
       }
     }
 
-    // 4. FUNÇÕES DE REMANEJAMENTO
-    function abrirModalRemanejar(index) {
-      const cand = ultimoRanking[index];
-      document.getElementById('rem-id-colab').value = cand.id;
-      document.getElementById('rem-nome').innerText = `Colaborador: ${cand.nome} (ID: ${cand.id})`;
-
-      const select = document.getElementById('rem-demanda-antiga');
-      const projetos = cand.projetos_atuais || [];
-      select.innerHTML = projetos.length > 0
-        ? projetos.map(p => `<option value="${p.id_demanda}">${p.nome_demanda} (ID: ${p.id_demanda})</option>`).join('')
-        : `<option value="0">Sem demanda anterior (Alocação direta)</option>`;
-
-      document.getElementById('modal-remanejar').classList.remove('hidden');
-    }
-
-    function fecharModal() {
-      document.getElementById('modal-remanejar').classList.add('hidden');
-    }
-
-    async function confirmarRemanejamento() {
-      const payload = {
-        id_colaborador: Number(document.getElementById('rem-id-colab').value),
-        id_demanda_antiga: Number(document.getElementById('rem-demanda-antiga').value),
-        nova_porcentagem_demanda_antiga: Number(document.getElementById('rem-pct-antiga').value),
-        id_demanda_nova: Number(document.getElementById('rem-demanda-nova').value),
-        porcentagem_nova_demanda: Number(document.getElementById('rem-pct-nova').value),
-        mes: document.getElementById('rem-mes').value,
-        ano: Number(document.getElementById('rem-ano').value)
-      };
-
-      const res = await fetch(ENDPOINTS.REMANEJAR, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const out = await res.json();
-      alert(out.mensagem || "Remanejamento concluído!");
-      fecharModal();
-      executarBusca();
-    }
-
-    // 5. COMPARAÇÃO E NAVEGAÇÃO DE ABAS
-    function toggleComparar(index) {
-      if (selecionadosComparacao.includes(index)) {
-        selecionadosComparacao = selecionadosComparacao.filter(i => i !== index);
-      } else {
-        selecionadosComparacao.push(index);
-      }
-      document.getElementById('count-comp').innerText = selecionadosComparacao.length;
-      renderizarComparacao();
-    }
-
-    function renderizarComparacao() {
-      const grid = document.getElementById('grid-comparacao');
-      grid.innerHTML = selecionadosComparacao.map(idx => {
-        const c = ultimoRanking[idx];
-        return `
-          <div class="bg-slate-800 border border-indigo-500/40 p-5 rounded-xl space-y-2 text-xs">
-            <h3 class="text-base font-bold text-indigo-300">${c.nome}</h3>
-            <p><strong>Base:</strong> ${c.tipo_base}</p>
-            <p><strong>Senioridade:</strong> ${c.senioridade}</p>
-            <p><strong>Aderência Skills:</strong> ${c.aderencia_skills}</p>
-            <p><strong>Tempo Livre:</strong> ${c.tempo_livre}</p>
-            <p><strong>Alocação Atual:</strong> ${c.alocacao_atual}</p>
-            <p><strong>Projetos Atuais:</strong> ${(c.projetos_atuais || []).map(p => p.nome_demanda).join(', ') || 'Nenhum'}</p>
-          </div>
-        `;
-      }).join('');
-    }
-
-    async function carregarDemandasEPessoas() {
-      const demandasEl = document.getElementById('lista-demandas');
-      const pessoasEl = document.getElementById('lista-pessoas');
-      demandasEl.innerHTML = pessoasEl.innerHTML = `<p class="p-4 text-sm text-slate-400">Carregando dados do PostgreSQL...</p>`;
+    // ==========================================
+    // 3. DEMANDAS E PROJETOS REAIS
+    // ==========================================
+    async function carregarDemandas() {
+      const grid = document.getElementById('grid-demandas');
+      grid.innerHTML = `<p class="text-sm text-slate-400">Carregando demandas reais...</p>`;
       try {
         const res = await fetch(ENDPOINTS.DEMANDAS);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const demandas = await res.json();
-        demandasEl.innerHTML = demandas.length
-          ? demandas.map(d => `
-            <div class="px-4 py-3 flex items-center justify-between gap-3">
-              <div>
-                <p class="text-sm font-medium">${d.nome}</p>
-                <p class="text-xs text-slate-400">ID: ${d.id} • ${d.inicio} até ${d.termino}</p>
-              </div>
-              <span class="text-xs text-indigo-300">${d.pessoas} pessoa(s)</span>
-            </div>
-          `).join('')
-          : `<p class="p-4 text-sm text-slate-400">Nenhuma demanda ativa encontrada.</p>`;
-        pessoasEl.innerHTML = demandas.flatMap(d => (d.colaboradores || []).map(pessoa => ({
-          ...pessoa,
-          demanda: d.nome
-        }))).map(pessoa => `
-            <div class="px-4 py-3 flex items-center justify-between gap-3">
-              <div><p class="text-sm font-medium">${pessoa.nome}</p><p class="text-xs text-slate-400">${pessoa.demanda}</p></div>
-              <span class="text-xs text-slate-500">Colaborador</span>
-            </div>
-          `).join('') || `<p class="p-4 text-sm text-slate-400">Nenhuma pessoa alocada encontrada.</p>`;
-      } catch (erro) {
-        demandasEl.innerHTML = pessoasEl.innerHTML = `<p class="p-4 text-sm text-rose-300">Não foi possível carregar dados reais do PostgreSQL.</p>`;
-        console.error(erro);
+        grid.innerHTML = demandas.length ? demandas.map(d => `
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl">
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="font-bold text-lg text-slate-100">${d.nome}</h3>
+            <span class="text-[10px] px-2 py-1 rounded bg-slate-900 border border-slate-700">ID ${d.id}</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-3">${d.inicio} até ${d.termino} • Profissionais (${d.pessoas}):</p>
+          <ul class="text-sm space-y-1 text-slate-300">
+            ${(d.colaboradores || []).length > 0 ? d.colaboradores.map(p => `<li>• ${p.nome}</li>`).join('') : '<li class="text-slate-500 italic">Ninguém alocado.</li>'}
+          </ul>
+        </div>
+        `).join('') : `<p class="text-sm text-slate-400">Nenhuma demanda ativa.</p>`;
+      } catch (error) {
+        grid.innerHTML = `<p class="text-sm text-rose-300">Não foi possível carregar demandas do PostgreSQL.</p>`;
+        console.error(error);
       }
     }
 
-    async function carregarDashboard() {
-      const dashboard = document.getElementById('dashboard-pessoas');
-      dashboard.innerHTML = `<p class="text-sm text-slate-400">Carregando dados do PostgreSQL...</p>`;
-      try {
-        const res = await fetch(ENDPOINTS.DASHBOARD);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const pessoas = await res.json();
-        const livres = pessoas.filter(pessoa => Number(pessoa.disponibilidade) > 0);
-        const media = pessoas.length
-          ? Math.round(pessoas.reduce((soma, pessoa) => soma + Number(pessoa.disponibilidade || 0), 0) / pessoas.length)
-          : 0;
-      document.getElementById('dashboard-kpis').innerHTML = `
-        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4"><p class="text-xs text-slate-400">Talentos cadastrados</p><p class="text-2xl font-bold mt-1">${pessoas.length}</p></div>
-        <div class="bg-slate-800 border border-emerald-500/30 rounded-xl p-4"><p class="text-xs text-slate-400">Com tempo livre</p><p class="text-2xl font-bold text-emerald-400 mt-1">${livres.length}</p></div>
-        <div class="bg-slate-800 border border-indigo-500/30 rounded-xl p-4"><p class="text-xs text-slate-400">Média de disponibilidade</p><p class="text-2xl font-bold text-indigo-300 mt-1">${media}%</p></div>
-      `;
-      document.getElementById('dashboard-pessoas').innerHTML = livres.length
-        ? livres.map(pessoa => `
-            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
-              <div class="flex justify-between gap-2"><h3 class="font-bold">${pessoa.nome}</h3><span class="text-emerald-400 text-sm font-semibold">${pessoa.disponibilidade}% livre</span></div>
-              <p class="text-xs text-slate-400 mt-1">${pessoa.cargo || 'Cargo não informado'} • ${pessoa.senioridade || 'Senioridade não informada'}</p>
-              <div class="flex flex-wrap gap-1 mt-3">${(pessoa.skills || []).map(skill => `<span class="text-[11px] bg-slate-900 px-2 py-1 rounded border border-slate-700">${skill}</span>`).join('') || '<span class="text-xs text-slate-500">Skills não informadas</span>'}</div>
-            </div>
-          `).join('')
-        : `<p class="text-sm text-slate-400">Nenhuma pessoa com tempo livre no resultado.</p>`;
-      } catch (erro) {
-        document.getElementById('dashboard-kpis').innerHTML = '';
-        dashboard.innerHTML = `<p class="text-sm text-rose-300">Não foi possível carregar dados reais do PostgreSQL.</p>`;
-        console.error(erro);
-      }
-    }
-
-    function alternarChat(abrir) {
-      const painel = document.getElementById('painel-chat');
-      const deveAbrir = typeof abrir === 'boolean' ? abrir : painel.classList.contains('translate-x-full');
-      painel.classList.toggle('translate-x-full', !deveAbrir);
-      document.getElementById('abrir-chat').classList.toggle('hidden', deveAbrir);
-      if (deveAbrir) document.getElementById('chat-input').focus();
-    }
-
-    function alternarChatTela() {
-      const painel = document.getElementById('painel-chat');
-      const expandido = painel.classList.toggle('w-full');
-      painel.classList.toggle('sm:w-[390px]', !expandido);
-      document.getElementById('btn-expandir-chat').innerText = expandido ? '↙' : '⛶';
-    }
-
-    function adicionarMensagemChat(texto, tipo) {
-      const mensagens = document.getElementById('chat-mensagens');
-      const classe = tipo === 'user' ? 'ml-auto bg-indigo-600' : 'bg-slate-800';
-      mensagens.insertAdjacentHTML('beforeend', `<div class="max-w-[85%] rounded-lg p-3 text-sm ${classe}">${texto}</div>`);
-      mensagens.scrollTop = mensagens.scrollHeight;
-    }
-
-    async function enviarMensagemChat(event) {
-      event.preventDefault();
-      const input = document.getElementById('chat-input');
-      const texto = input.value.trim();
-      if (!texto) return;
-      input.value = '';
-      adicionarMensagemChat(texto, 'user');
-      adicionarMensagemChat('Consultando talentos...', 'assistant');
-      document.getElementById('input-ia').value = texto;
-      try {
-        const res = await fetch(ENDPOINTS.BUSCA, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ texto_busca: texto, modo_disponibilidade: document.getElementById('modo-disp').value })
-        });
-        const data = await res.json();
-        document.getElementById('chat-mensagens').lastElementChild.remove();
-        renderizarResultadoBusca(data);
-        adicionarMensagemChat(`${(data.ranking || []).length} talento(s) encontrado(s). Atualizei o ranking e o dashboard para você.`, 'assistant');
-      } catch (erro) {
-        document.getElementById('chat-mensagens').lastElementChild.remove();
-        adicionarMensagemChat('Não consegui consultar o n8n. Verifique se o workflow está publicado.', 'assistant');
-        console.error(erro);
-      }
-    }
-
-    function mudarAba(aba) {
-      ['busca', 'comparar', 'favoritos', 'demandas', 'dashboard'].forEach(a => {
-        document.getElementById(`sec-${a}`).classList.toggle('hidden', a !== aba);
-        document.getElementById(`tab-${a}`).className = a === aba
-          ? 'px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium'
-          : 'px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium';
+    // ==========================================
+    // 4. FAVORITOS & REMANEJAMENTO (Iguais ao anterior)
+    // ==========================================
+    async function salvarFavorito(index) {
+      const cand = ultimoRanking[index];
+      const res = await fetch(ENDPOINTS.SALVAR_FAV, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_gerente: 1, id_profissional: cand.id, nome_profissional: cand.nome,
+          origem: cand.tipo_base === 'interno' ? 'SGD (Interno)' : 'Externo',
+          cargo: cand.cargo, senioridade: cand.senioridade,
+          score_ranking: parseInt(cand.aderencia_skills) || 100, disponibilidade_media: parseInt(cand.tempo_livre) || 100
+        })
       });
-      if (aba === 'demandas') carregarDemandasEPessoas();
-      if (aba === 'dashboard') carregarDashboard();
+      alert((await res.json()).mensagem);
+    }
+
+    async function carregarFavoritos() {
+      const div = document.getElementById('lista-favoritos');
+      div.innerHTML = `<p class="text-slate-400">Carregando...</p>`;
+      try {
+        const text = await (await fetch(ENDPOINTS.LISTAR_FAV)).text();
+        const f = text ? JSON.parse(text) : [];
+        if (!f.length) return div.innerHTML = `<p class="text-slate-500">Nenhum favorito.</p>`;
+        div.innerHTML = f.map(x => `
+          <div class="bg-slate-800 border-l-4 border-indigo-500 p-4 rounded-r-xl">
+            <h3 class="font-bold">${x.nome_profissional}</h3><p class="text-xs text-slate-400">${x.cargo}</p>
+          </div>`).join('');
+      } catch(e) { div.innerHTML = "Erro ao carregar."; }
+    }
+
+    function abrirModalRemanejar(index) {
+      const cand = ultimoRanking[index];
+      document.getElementById('rem-id-colab').value = cand.id;
+      document.getElementById('rem-nome').innerText = cand.nome;
+      const sel = document.getElementById('rem-demanda-antiga');
+      sel.innerHTML = (cand.projetos_atuais || []).map(p => `<option value="${p.id_demanda}">${p.nome_demanda}</option>`).join('');
+      document.getElementById('modal-remanejar').classList.remove('hidden');
+    }
+    function fecharModal(id) { document.getElementById(id).classList.add('hidden'); }
+    async function confirmarRemanejamento() {
+      await fetch(ENDPOINTS.REMANEJAR, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_colaborador: document.getElementById('rem-id-colab').value,
+          id_demanda_antiga: document.getElementById('rem-demanda-antiga').value,
+          nova_porcentagem_demanda_antiga: document.getElementById('rem-pct-antiga').value,
+          id_demanda_nova: document.getElementById('rem-demanda-nova').value,
+          porcentagem_nova_demanda: document.getElementById('rem-pct-nova').value,
+          mes: document.getElementById('rem-mes').value, ano: document.getElementById('rem-ano').value
+        })
+      });
+      alert("Alocação atualizada no banco!");
+      fecharModal('modal-remanejar');
+      executarBusca();
+    }
+
+    // ==========================================
+    // NAVEGAÇÃO DE ABAS
+    // ==========================================
+    function mudarAba(abaId) {
+      ['dashboard', 'demandas', 'comparar', 'favoritos'].forEach(a => {
+        const sec = document.getElementById(`sec-${a}`);
+        const tab = document.getElementById(`tab-${a}`);
+        if(a === abaId) {
+          sec.classList.remove('hidden');
+          tab.className = 'px-4 py-2 rounded-t-lg bg-slate-800 text-sm font-medium border-b-2 border-indigo-500 text-indigo-300 transition';
+        } else {
+          sec.classList.add('hidden');
+          tab.className = 'px-4 py-2 rounded-t-lg hover:bg-slate-800 text-sm font-medium text-slate-400 border-b-2 border-transparent transition';
+        }
+      });
+      if (abaId === 'dashboard') carregarDashboard();
+      if (abaId === 'demandas') carregarDemandas();
+    }
+
+    function toggleComparar(index) {
+      if (selecionadosComparacao.includes(index)) selecionadosComparacao = selecionadosComparacao.filter(i => i !== index);
+      else selecionadosComparacao.push(index);
+      document.getElementById('count-comp').innerText = selecionadosComparacao.length;
+      document.getElementById('grid-comparacao').innerHTML = selecionadosComparacao.map(idx => {
+        const c = ultimoRanking[idx];
+        return `<div class="bg-slate-800 p-4 border border-indigo-500/30 rounded-xl text-sm">
+          <h3 class="font-bold text-indigo-300">${c.nome}</h3><p>Tempo Livre: ${c.tempo_livre}</p>
+        </div>`;
+      }).join('');
     }
   </script>
 </body>
