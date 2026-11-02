@@ -196,6 +196,8 @@
     const N8N_BASE_URL = "http://localhost:5678/webhook";
     const ENDPOINTS = {
       BUSCA: `${N8N_BASE_URL}/d487a45d-f399-488d-a16e-0f0b6ed9bf25`,
+      DASHBOARD: `${N8N_BASE_URL}/dashboard-dados`,
+      DEMANDAS: `${N8N_BASE_URL}/demandas-pessoas`,
       SALVAR_FAV: `${N8N_BASE_URL}/salvar-favorito`,
       LISTAR_FAV: `${N8N_BASE_URL}/listar-favoritos`,
       REMANEJAR: `${N8N_BASE_URL}/remanejar-alocacao`
@@ -248,9 +250,6 @@
         <span class="bg-slate-900 px-2 py-1 rounded">Skills: ${(f.skills || []).join(', ')}</span>
         <span class="bg-slate-900 px-2 py-1 rounded">Meta Livre: ${f.disponibilidade_minima ?? 50}%</span>
       `;
-      renderizarDemandasEPessoas();
-      renderizarDashboard();
-
       const container = document.getElementById('lista-ranking');
       if (ultimoRanking.length === 0) {
         container.innerHTML = `<p class="text-slate-400 col-span-3">Nenhum profissional encontrado nas duas bases.</p>`;
@@ -424,59 +423,70 @@
       }).join('');
     }
 
-    function renderizarDemandasEPessoas() {
-      const demandas = new Map();
-      ultimoRanking.forEach(cand => {
-        (cand.projetos_atuais || []).forEach(projeto => {
-          const id = projeto.id_demanda ?? projeto.id ?? projeto.nome_demanda;
-          demandas.set(String(id), {
-            nome: projeto.nome_demanda || `Demanda ${id}`,
-            id,
-            pessoas: (demandas.get(String(id))?.pessoas || 0) + 1
-          });
-        });
-      });
-
+    async function carregarDemandasEPessoas() {
       const demandasEl = document.getElementById('lista-demandas');
-      demandasEl.innerHTML = demandas.size
-        ? [...demandas.values()].map(d => `
+      const pessoasEl = document.getElementById('lista-pessoas');
+      demandasEl.innerHTML = pessoasEl.innerHTML = `<p class="p-4 text-sm text-slate-400">Carregando dados do PostgreSQL...</p>`;
+      try {
+        const res = await fetch(ENDPOINTS.DEMANDAS);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const demandas = await res.json();
+        demandasEl.innerHTML = demandas.length
+          ? demandas.map(d => `
             <div class="px-4 py-3 flex items-center justify-between gap-3">
-              <div><p class="text-sm font-medium">${d.nome}</p><p class="text-xs text-slate-400">ID: ${d.id}</p></div>
+              <div>
+                <p class="text-sm font-medium">${d.nome}</p>
+                <p class="text-xs text-slate-400">ID: ${d.id} • ${d.inicio} até ${d.termino}</p>
+              </div>
               <span class="text-xs text-indigo-300">${d.pessoas} pessoa(s)</span>
             </div>
           `).join('')
-        : `<p class="p-4 text-sm text-slate-400">Nenhuma demanda atual nos resultados.</p>`;
-
-      document.getElementById('lista-pessoas').innerHTML = ultimoRanking.length
-        ? ultimoRanking.map(cand => `
+          : `<p class="p-4 text-sm text-slate-400">Nenhuma demanda ativa encontrada.</p>`;
+        pessoasEl.innerHTML = demandas.flatMap(d => (d.colaboradores || []).map(pessoa => ({
+          ...pessoa,
+          demanda: d.nome
+        }))).map(pessoa => `
             <div class="px-4 py-3 flex items-center justify-between gap-3">
-              <div><p class="text-sm font-medium">${cand.nome}</p><p class="text-xs text-slate-400">${cand.cargo || 'Cargo não informado'} • ${cand.tipo_base}</p></div>
-              <span class="text-xs ${Number.parseInt(cand.tempo_livre, 10) > 0 ? 'text-emerald-400' : 'text-amber-300'}">${cand.tempo_livre || 0} livre</span>
+              <div><p class="text-sm font-medium">${pessoa.nome}</p><p class="text-xs text-slate-400">${pessoa.demanda}</p></div>
+              <span class="text-xs text-slate-500">Colaborador</span>
             </div>
-          `).join('')
-        : `<p class="p-4 text-sm text-slate-400">Nenhuma pessoa encontrada.</p>`;
+          `).join('') || `<p class="p-4 text-sm text-slate-400">Nenhuma pessoa alocada encontrada.</p>`;
+      } catch (erro) {
+        demandasEl.innerHTML = pessoasEl.innerHTML = `<p class="p-4 text-sm text-rose-300">Não foi possível carregar dados reais do PostgreSQL.</p>`;
+        console.error(erro);
+      }
     }
 
-    function renderizarDashboard() {
-      const livres = ultimoRanking.filter(cand => (Number.parseInt(cand.tempo_livre, 10) || 0) > 0);
-      const total = ultimoRanking.length;
-      const media = livres.length
-        ? Math.round(livres.reduce((soma, cand) => soma + (Number.parseInt(cand.tempo_livre, 10) || 0), 0) / livres.length)
-        : 0;
+    async function carregarDashboard() {
+      const dashboard = document.getElementById('dashboard-pessoas');
+      dashboard.innerHTML = `<p class="text-sm text-slate-400">Carregando dados do PostgreSQL...</p>`;
+      try {
+        const res = await fetch(ENDPOINTS.DASHBOARD);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const pessoas = await res.json();
+        const livres = pessoas.filter(pessoa => Number(pessoa.disponibilidade) > 0);
+        const media = pessoas.length
+          ? Math.round(pessoas.reduce((soma, pessoa) => soma + Number(pessoa.disponibilidade || 0), 0) / pessoas.length)
+          : 0;
       document.getElementById('dashboard-kpis').innerHTML = `
-        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4"><p class="text-xs text-slate-400">Pessoas no resultado</p><p class="text-2xl font-bold mt-1">${total}</p></div>
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4"><p class="text-xs text-slate-400">Talentos cadastrados</p><p class="text-2xl font-bold mt-1">${pessoas.length}</p></div>
         <div class="bg-slate-800 border border-emerald-500/30 rounded-xl p-4"><p class="text-xs text-slate-400">Com tempo livre</p><p class="text-2xl font-bold text-emerald-400 mt-1">${livres.length}</p></div>
         <div class="bg-slate-800 border border-indigo-500/30 rounded-xl p-4"><p class="text-xs text-slate-400">Média de disponibilidade</p><p class="text-2xl font-bold text-indigo-300 mt-1">${media}%</p></div>
       `;
       document.getElementById('dashboard-pessoas').innerHTML = livres.length
-        ? livres.map(cand => `
+        ? livres.map(pessoa => `
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
-              <div class="flex justify-between gap-2"><h3 class="font-bold">${cand.nome}</h3><span class="text-emerald-400 text-sm font-semibold">${cand.tempo_livre} livre</span></div>
-              <p class="text-xs text-slate-400 mt-1">${cand.cargo || 'Cargo não informado'} • ${cand.senioridade || 'Senioridade não informada'}</p>
-              <div class="flex flex-wrap gap-1 mt-3">${(cand.skills_atendidas || []).map(skill => `<span class="text-[11px] bg-slate-900 px-2 py-1 rounded border border-slate-700">${skill}</span>`).join('') || '<span class="text-xs text-slate-500">Skills não informadas</span>'}</div>
+              <div class="flex justify-between gap-2"><h3 class="font-bold">${pessoa.nome}</h3><span class="text-emerald-400 text-sm font-semibold">${pessoa.disponibilidade}% livre</span></div>
+              <p class="text-xs text-slate-400 mt-1">${pessoa.cargo || 'Cargo não informado'} • ${pessoa.senioridade || 'Senioridade não informada'}</p>
+              <div class="flex flex-wrap gap-1 mt-3">${(pessoa.skills || []).map(skill => `<span class="text-[11px] bg-slate-900 px-2 py-1 rounded border border-slate-700">${skill}</span>`).join('') || '<span class="text-xs text-slate-500">Skills não informadas</span>'}</div>
             </div>
           `).join('')
         : `<p class="text-sm text-slate-400">Nenhuma pessoa com tempo livre no resultado.</p>`;
+      } catch (erro) {
+        document.getElementById('dashboard-kpis').innerHTML = '';
+        dashboard.innerHTML = `<p class="text-sm text-rose-300">Não foi possível carregar dados reais do PostgreSQL.</p>`;
+        console.error(erro);
+      }
     }
 
     function alternarChat(abrir) {
@@ -534,6 +544,8 @@
           ? 'px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium'
           : 'px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium';
       });
+      if (aba === 'demandas') carregarDemandasEPessoas();
+      if (aba === 'dashboard') carregarDashboard();
     }
   </script>
 </body>
