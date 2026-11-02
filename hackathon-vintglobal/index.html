@@ -597,10 +597,10 @@
           <svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span>Buscar</span>
         </button>
         <nav class="tabs" role="tablist" aria-label="Seções do workspace">
-          <button type="button" role="tab" id="tab-chat" class="tab active" aria-selected="false" tabindex="-1" aria-controls="sidebar" data-action="aba" data-aba="chat">
+          <button type="button" role="tab" id="tab-chat" class="tab active" aria-selected="true" aria-controls="sidebar" data-action="aba" data-aba="chat">
             <svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span>Chat &amp; Busca</span>
           </button>
-          <button type="button" role="tab" id="tab-dashboard" class="tab active" aria-selected="true" aria-controls="sec-dashboard" data-action="aba" data-aba="dashboard">
+          <button type="button" role="tab" id="tab-dashboard" class="tab" aria-selected="false" tabindex="-1" aria-controls="sec-dashboard" data-action="aba" data-aba="dashboard">
             <svg class="i" aria-hidden="true"><use href="#i-dashboard"/></svg><span>Dashboard Geral</span>
           </button>
           <button type="button" role="tab" id="tab-demandas" class="tab" aria-selected="false" tabindex="-1" aria-controls="sec-demandas" data-action="aba" data-aba="demandas">
@@ -618,7 +618,7 @@
       <div class="content" id="content">
 
         <!-- ABA 1: DASHBOARD -->
-        <section id="sec-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" class="page">
+        <section id="sec-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" class="page hidden">
           <div class="page-head">
             <div>
               <p class="eyebrow">Visão operacional</p>
@@ -1232,6 +1232,7 @@
       if (mqMobile.matches) app.classList.toggle('sb-open', aberta);
       else { app.classList.toggle('sb-collapsed', !aberta); try { localStorage.setItem('inhire_sb_aberta', aberta ? '1' : '0'); } catch (e) {} }
       const b = $('btn-sb-collapse');
+      if (!b) return;
       b.setAttribute('aria-expanded', String(aberta));
       const rot = mqMobile.matches ? 'Fechar painel de busca' : (aberta ? 'Recolher painel de busca' : 'Expandir painel de busca');
       b.setAttribute('aria-label', rot); b.title = rot;
@@ -1242,6 +1243,7 @@
       if (ligar) app.classList.remove('sb-collapsed');
       app.classList.toggle('sb-full', ligar);
       const b = $('btn-sb-full');
+      if (!b) return;
       const rot = ligar ? 'Sair da tela cheia' : 'Chat em tela cheia';
       b.setAttribute('aria-pressed', String(ligar));
       b.setAttribute('aria-label', rot);
