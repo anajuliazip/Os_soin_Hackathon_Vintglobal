@@ -117,10 +117,17 @@
     .app.chat-primary .sidebar {
       width: 100%;
       flex: 1;
+      order: 2;
       border-right: 0;
       border-bottom: 1px solid var(--line);
     }
-    .app.chat-primary .main { display: none; }
+    .app.chat-primary .main {
+      display: flex;
+      flex: none;
+      order: 1;
+      height: auto;
+    }
+    .app.chat-primary .main .content { display: none; }
     .app.chat-primary .sb-body { width: min(1120px, 100%); margin: 0 auto; }
     .app.chat-primary .results { padding-bottom: 28px; }
 
