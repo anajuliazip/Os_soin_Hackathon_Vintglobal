@@ -1,0 +1,579 @@
+{
+  "name": "InHire AI - Motor de Alocação Completo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "d487a45d-f399-488d-a16e-0f0b6ed9bf25",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        32,
+        320
+      ],
+      "name": "Webhook Busca",
+      "id": "eb5d8bbb-e14d-49d3-ad93-22244a6c720a",
+      "webhookId": "8f0cf0c1-ff00-4745-a7d6-2b22d937ca62"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/generate",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({\n  \"model\": \"qwen2.5:3b\",\n  \"format\": \"json\",\n  \"stream\": false,\n  \"prompt\": \"Você é um extrator de parâmetros de alocação. Retorne APENAS JSON válido com: 'skills' (array), 'senioridade', 'disponibilidade_minima' (numero 0-100) e 'tempo_alocacao_meses' (numero). Texto: \" + ($json.body?.texto_busca || JSON.stringify($json.body || {}))\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        256,
+        320
+      ],
+      "name": "Qwen Ollama",
+      "id": "6e9b4a97-a282-415f-8e26-c921a064c95b",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT c.id AS id_colaborador, c.nome_abreviado AS colaborador, ds.descricao AS senioridade, dc.descricao AS cargo, s.nome_skill AS skill, cs.nivel_conhecimento, a.id AS id_alocacao, d.id AS id_demanda, d.nome_demanda AS demanda, p.ano, p.mes, COALESCE(p.porcentagem, 0) AS percentual_na_demanda FROM \"InHire\".colaboradores c JOIN \"InHire\".dominios ds ON ds.id = c.id_senioridade AND ds.tipo_dominio = 'SENIORIDADE' AND ds.status IS TRUE AND ds.deletado IS FALSE LEFT JOIN \"InHire\".dominios dc ON dc.id = c.id_cargo AND dc.tipo_dominio = 'CARGO' AND dc.status IS TRUE AND dc.deletado IS FALSE JOIN \"InHire\".colaborador_skills cs ON cs.id_colaborador = c.id AND cs.status IS TRUE AND cs.deletado IS FALSE JOIN \"InHire\".skills s ON s.id = cs.id_skill AND s.status IS TRUE AND s.deletado IS FALSE LEFT JOIN \"InHire\".alocacoes a ON a.id_colaborador = c.id AND a.status IS TRUE AND a.deletado IS FALSE LEFT JOIN \"InHire\".demandas d ON d.id = a.id_demanda AND d.status IS TRUE AND d.deletado IS FALSE LEFT JOIN \"InHire\".planejamentos p ON p.id_alocacao = a.id AND p.status IS TRUE AND p.deletado IS FALSE WHERE c.status IS TRUE AND c.deletado IS FALSE;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        480,
+        320
+      ],
+      "name": "DB Interno",
+      "id": "23ce6577-f689-4dac-8db1-f0091d585b55",
+      "credentials": {
+        "postgres": {
+          "id": "YfghThO1pwQ6OCVx",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const normalizar = (str) => (str || \"\").toString().normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").trim().toLowerCase();\nconst rawWebhook = $('Webhook Busca').first()?.json || {};\nconst webhookBody = rawWebhook.body || rawWebhook;\nlet iaConfig = {};\ntry { const qwenStr = $('Qwen Ollama').first()?.json?.response; if (qwenStr) iaConfig = JSON.parse(qwenStr); } catch(e) {}\nconst reqSkills = Array.isArray(iaConfig.skills) && iaConfig.skills.length > 0 ? iaConfig.skills : (Array.isArray(webhookBody.skills) ? webhookBody.skills : []);\nconst reqDisp = Number(iaConfig.disponibilidade_minima ?? webhookBody.disponibilidade_minima ?? 50);\nconst reqSen = (iaConfig.senioridade ?? webhookBody.senioridade ?? \"\").toString();\nconst reqMeses = Number(iaConfig.tempo_alocacao_meses ?? webhookBody.tempo_alocacao_meses ?? 3);\nconst modoDisp = webhookBody.modo_disponibilidade || \"faixa_ate\";\nconst mapaMeses = { Jan:'01', Fev:'02', Mar:'03', Abr:'04', Mai:'05', Jun:'06', Jul:'07', Ago:'08', Set:'09', Out:'10', Nov:'11', Dez:'12' };\nconst agrupado = {};\nfor (const item of $input.all()) {\n  const linha = item.json;\n  if (!linha.colaborador) continue;\n  const id = linha.id_colaborador;\n  if (!agrupado[id]) {\n    agrupado[id] = { id_colaborador: id, colaborador: linha.colaborador, senioridade: linha.senioridade || \"Não informada\", cargo: linha.cargo || \"Não informado\", skills: new Set(), demandas_atuais: new Map(), meses: {} };\n  }\n  if (linha.skill) agrupado[id].skills.add(linha.skill.trim());\n  if (linha.demanda && linha.id_demanda) agrupado[id].demandas_atuais.set(linha.id_demanda, { id_demanda: linha.id_demanda, nome_demanda: linha.demanda });\n  if (linha.ano && linha.mes && linha.id_alocacao) {\n    const mesNum = mapaMeses[linha.mes] || '01';\n    const periodo = `${linha.ano}-${mesNum}`;\n    if (!agrupado[id].meses[periodo]) agrupado[id].meses[periodo] = { total_alocado: 0, alocacoes_vistas: new Set() };\n    const chaveAlocacao = `${linha.id_alocacao}-${periodo}`;\n    if (!agrupado[id].meses[periodo].alocacoes_vistas.has(chaveAlocacao)) {\n      agrupado[id].meses[periodo].alocacoes_vistas.add(chaveAlocacao);\n      agrupado[id].meses[periodo].total_alocado += Number(linha.percentual_na_demanda || 0);\n    }\n  }\n}\nconst aprovados = [];\nfor (const id in agrupado) {\n  const dev = agrupado[id];\n  if (reqSen && normalizar(dev.senioridade) !== normalizar(reqSen)) continue;\n  const skillsDev = Array.from(dev.skills);\n  const skillsEncontradas = reqSkills.filter(req => skillsDev.some(s => normalizar(s) === normalizar(req)));\n  if (reqSkills.length > 0 && skillsEncontradas.length === 0) continue;\n  const periodosAvaliados = Object.keys(dev.meses).sort().slice(-reqMeses);\n  let somaAlocado = 0;\n  for (const p of periodosAvaliados) somaAlocado += Math.min(100, dev.meses[p].total_alocado);\n  const alocadoMedio = periodosAvaliados.length > 0 ? Math.round(somaAlocado / periodosAvaliados.length) : 0;\n  const livreMedio = Math.max(0, 100 - alocadoMedio);\n  let aprovadoTempo = true;\n  if (modoDisp === \"estrito_0_a_x\") aprovadoTempo = (livreMedio >= 0 && livreMedio <= reqDisp);\n  else if (modoDisp === \"minimo\") aprovadoTempo = (livreMedio >= reqDisp);\n  if (!aprovadoTempo) continue;\n  const statusAlocacao = livreMedio >= reqDisp ? \"Disponível para Alocação Direta\" : `Requer Remanejamento (${livreMedio}% livre / meta ${reqDisp}%)`;\n  aprovados.push({\n    match_encontrado: true, origem: \"SGD (Interno)\", id_colaborador: dev.id_colaborador, colaborador: dev.colaborador, cargo: dev.cargo, senioridade: dev.senioridade, status_acao: statusAlocacao, skills_buscadas_atendidas: skillsEncontradas, qtd_skills_atendidas: skillsEncontradas.length, qtd_skills_pedidas: reqSkills.length, percentual_alocado_medio: alocadoMedio, disponibilidade_media: livreMedio, projetos_atuais: Array.from(dev.demandas_atuais.values()), score_ranking: reqSkills.length > 0 ? Math.round((skillsEncontradas.length / reqSkills.length) * 100) : 100\n  });\n}\naprovados.sort((a, b) => b.score_ranking - a.score_ranking || b.disponibilidade_media - a.disponibilidade_media);\nif (aprovados.length === 0) return [{ json: { match_encontrado: false } }];\nreturn aprovados.map(c => ({ json: c }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        320
+      ],
+      "name": "Matching Interno",
+      "id": "e682bfb9-25e1-4b30-a2dd-a5c62b7a3038"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9cf73f92",
+              "leftValue": "={{ $json.match_encontrado }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        320
+      ],
+      "name": "Desvio Base 2",
+      "id": "e14f0d51-1f2f-4448-9945-29ed990ee409"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT t.id AS id_talento, t.nome_abreviado AS talento, ds.descricao AS senioridade, dc.descricao AS cargo, s.nome_skill AS skill, dn.descricao AS nivel_conhecimento, COALESCE(t.disponibilidade_informada_percentual, 100) AS disponibilidade FROM \"InHire\".talentos t LEFT JOIN \"InHire\".dominios ds ON ds.id = t.id_senioridade AND ds.tipo_dominio = 'SENIORIDADE' LEFT JOIN \"InHire\".dominios dc ON dc.id = t.id_cargo AND dc.tipo_dominio = 'CARGO' JOIN \"InHire\".talento_skills ts ON ts.id_talento = t.id JOIN \"InHire\".skills s ON s.id = ts.id_skill LEFT JOIN \"InHire\".dominios dn ON dn.id = ts.id_nivel_conhecimento AND dn.tipo_dominio = 'NIVEL_CONHECIMENTO' WHERE t.status IS TRUE AND s.status IS TRUE AND s.deletado IS FALSE;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        1136,
+        160
+      ],
+      "name": "DB Externo",
+      "id": "75bcbec1-ec18-410e-a170-3f4015a6f16b",
+      "credentials": {
+        "postgres": {
+          "id": "YfghThO1pwQ6OCVx",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const normalizar = (str) => (str || \"\").toString().normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").trim().toLowerCase();\nconst rawWebhook = $('Webhook Busca').first()?.json || {};\nconst webhookBody = rawWebhook.body || rawWebhook;\nlet iaConfig = {};\ntry { const qwenStr = $('Qwen Ollama').first()?.json?.response; if (qwenStr) iaConfig = JSON.parse(qwenStr); } catch(e) {}\nconst reqSkills = Array.isArray(iaConfig.skills) && iaConfig.skills.length > 0 ? iaConfig.skills : (Array.isArray(webhookBody.skills) ? webhookBody.skills : []);\nconst reqDisp = Number(iaConfig.disponibilidade_minima ?? webhookBody.disponibilidade_minima ?? 50);\nconst reqSen = (iaConfig.senioridade ?? webhookBody.senioridade ?? \"\").toString();\nconst talentosAgrupados = {};\nfor (const item of $input.all()) {\n  const linha = item.json;\n  if (!linha.talento) continue;\n  const id = linha.id_talento;\n  if (!talentosAgrupados[id]) {\n    talentosAgrupados[id] = { id_talento: id, colaborador: linha.talento, senioridade: linha.senioridade || \"Não informada\", cargo: linha.cargo || \"Não informado\", disponibilidade_media: Number(linha.disponibilidade ?? 100), skills: new Set() };\n  }\n  if (linha.skill) talentosAgrupados[id].skills.add(linha.skill.trim());\n}\nconst aprovados = [];\nfor (const id in talentosAgrupados) {\n  const cand = talentosAgrupados[id];\n  if (reqSen && cand.senioridade !== \"Não informada\" && normalizar(cand.senioridade) !== normalizar(reqSen)) continue;\n  if (cand.disponibilidade_media < reqDisp) continue;\n  const skillsCand = Array.from(cand.skills);\n  const skillsAtendidas = reqSkills.filter(req => skillsCand.some(s => normalizar(s) === normalizar(req)));\n  if (reqSkills.length > 0 && skillsAtendidas.length === 0) continue;\n  aprovados.push({\n    match_encontrado: true, origem: \"Banco de Talentos (Externo)\", id_talento: cand.id_talento, colaborador: cand.colaborador, cargo: cand.cargo, senioridade: cand.senioridade, skills_buscadas_atendidas: skillsAtendidas, qtd_skills_atendidas: skillsAtendidas.length, qtd_skills_pedidas: reqSkills.length, disponibilidade_media: cand.disponibilidade_media, status_acao: \"Disponível para Alocação Direta\", score_ranking: reqSkills.length > 0 ? Math.round((skillsAtendidas.length / reqSkills.length) * 100) : 100\n  });\n}\naprovados.sort((a, b) => b.score_ranking - a.score_ranking || b.disponibilidade_media - a.disponibilidade_media);\nif (aprovados.length === 0) return [{ json: { match_encontrado: false, mensagem: \"Nenhum profissional encontrado.\" } }];\nreturn aprovados.map(t => ({ json: t }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        160
+      ],
+      "name": "Matching Externo",
+      "id": "f5da8e3d-e4d8-4228-b625-1f5cedcc8747"
+    },
+    {
+      "parameters": {
+        "jsCode": "const itens = $input.all().map(i => i.json);\nconst rawWebhook = $('Webhook Busca').first()?.json || {};\nconst webhookBody = rawWebhook.body || rawWebhook;\nlet iaConfig = {};\ntry { const qwenStr = $('Qwen Ollama').first()?.json?.response; if (qwenStr) iaConfig = JSON.parse(qwenStr); } catch(e) {}\nconst filtrosFinais = Object.keys(iaConfig).length > 0 ? iaConfig : webhookBody;\nconst encontrou = itens.length > 0 && itens[0].match_encontrado !== false;\nconst resposta = {\n  resumo_busca: {\n    status: encontrou ? \"Sucesso\" : \"Sem resultados\",\n    origem_dados: encontrou ? itens[0].origem : \"Nenhuma\",\n    total_encontrados: encontrou ? itens.length : 0,\n    filtros_extraidos: filtrosFinais\n  },\n  ranking: encontrou ? itens.map((cand, idx) => ({\n    posicao: `${idx + 1}º`,\n    id: cand.id_colaborador || cand.id_talento,\n    tipo_base: cand.id_colaborador ? \"interno\" : \"externo\",\n    nome: cand.colaborador,\n    cargo: cand.cargo,\n    senioridade: cand.senioridade,\n    aderencia_skills: `${cand.score_ranking}% (${cand.qtd_skills_atendidas}/${cand.qtd_skills_pedidas})`,\n    skills_atendidas: cand.skills_buscadas_atendidas || [],\n    alocacao_atual: `${cand.percentual_alocado_medio ?? 0}%`,\n    tempo_livre: `${cand.disponibilidade_media}%`,\n    status_acao: cand.status_acao || \"Disponível para Contratação\",\n    projetos_atuais: cand.projetos_atuais || []\n  })) : []\n};\nreturn [{ json: resposta }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        320
+      ],
+      "name": "Formatar Resposta Busca",
+      "id": "c81ffa14-b7b0-47c1-a382-e12979ca5654"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1792,
+        320
+      ],
+      "name": "Retorno Busca",
+      "id": "0e16b739-3009-47de-8f99-318a4d84b2f8"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "salvar-favorito",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        32,
+        512
+      ],
+      "name": "Webhook Salvar Favorito",
+      "id": "3e98685a-a151-475b-807a-a07580c24074",
+      "webhookId": "1fcb3fa0-5424-4e5a-a367-96b48413010c"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS \"InHire\".favoritos (id SERIAL PRIMARY KEY, id_gerente BIGINT NOT NULL DEFAULT 1, id_profissional BIGINT NOT NULL, nome_profissional VARCHAR(255) NOT NULL, origem VARCHAR(50) NOT NULL, cargo VARCHAR(100), senioridade VARCHAR(100), score_ranking INTEGER, disponibilidade_media INTEGER, observacao TEXT, criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP, UNIQUE(id_gerente, id_profissional, origem));\nINSERT INTO \"InHire\".favoritos (id_gerente, id_profissional, nome_profissional, origem, cargo, senioridade, score_ranking, disponibilidade_media, observacao) VALUES ({{ Number($json.body?.id_gerente ?? 1) }}, {{ Number($json.body?.id_profissional ?? $json.body?.id ?? 0) }}, '{{ ($json.body?.nome_profissional || $json.body?.nome || \"Prof\").replace(/'/g, \"''\") }}', '{{ ($json.body?.origem || $json.body?.tipo_base || \"interno\").replace(/'/g, \"''\") }}', '{{ ($json.body?.cargo || \"Não informado\").replace(/'/g, \"''\") }}', '{{ ($json.body?.senioridade || \"Não informada\").replace(/'/g, \"''\") }}', {{ Number($json.body?.score_ranking ?? 100) }}, {{ Number($json.body?.disponibilidade_media ?? 100) }}, '{{ ($json.body?.observacao || \"Favoritado\").replace(/'/g, \"''\") }}') ON CONFLICT (id_gerente, id_profissional, origem) DO UPDATE SET score_ranking = EXCLUDED.score_ranking, disponibilidade_media = EXCLUDED.disponibilidade_media, observacao = EXCLUDED.observacao, criado_em = CURRENT_TIMESTAMP RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        320,
+        512
+      ],
+      "name": "DB Salvar Fav",
+      "id": "46532442-3bf0-4182-a763-e92ab35be84e",
+      "credentials": {
+        "postgres": {
+          "id": "YfghThO1pwQ6OCVx",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"sucesso\", mensagem: \"Profissional salvo nos favoritos!\", favorito: $json }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        592,
+        512
+      ],
+      "name": "Retorno Fav",
+      "id": "ef590525-c9fb-420b-b086-7aaa4ef5c986"
+    },
+    {
+      "parameters": {
+        "path": "listar-favoritos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        32,
+        736
+      ],
+      "name": "Webhook Listar Fav",
+      "id": "e4d33bfd-45e8-4fec-ad09-3308486c2ed5",
+      "webhookId": "9387ceb6-8be7-46da-88c9-085a94d515ad"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS \"InHire\".favoritos (id SERIAL PRIMARY KEY, id_gerente BIGINT NOT NULL DEFAULT 1, id_profissional BIGINT NOT NULL, nome_profissional VARCHAR(255) NOT NULL, origem VARCHAR(50) NOT NULL, cargo VARCHAR(100), senioridade VARCHAR(100), score_ranking INTEGER, disponibilidade_media INTEGER, observacao TEXT, criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP, UNIQUE(id_gerente, id_profissional, origem));\nSELECT * FROM \"InHire\".favoritos ORDER BY criado_em DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        320,
+        736
+      ],
+      "name": "DB Listar Fav",
+      "id": "c3443aff-a65d-4677-9e51-a64212454f40",
+      "credentials": {
+        "postgres": {
+          "id": "YfghThO1pwQ6OCVx",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        592,
+        736
+      ],
+      "name": "Retorno Listar",
+      "id": "e518f6ba-3ed9-4b7f-8052-ff163a1bcde6"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "remanejar-alocacao",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        32,
+        976
+      ],
+      "name": "Webhook Remanejar",
+      "id": "1ac41257-5d6f-4c6a-b234-a0cf7d22f2a1",
+      "webhookId": "0f2c9537-82de-4ab8-93c1-9684d7abb777"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH reduzir_antiga AS (\n    UPDATE \"InHire\".planejamentos p SET porcentagem = {{ Number($json.body?.nova_porcentagem_demanda_antiga ?? 50) }} FROM \"InHire\".alocacoes a WHERE p.id_alocacao = a.id AND a.id_colaborador = {{ Number($json.body?.id_colaborador) }} AND a.id_demanda = {{ Number($json.body?.id_demanda_antiga ?? 0) }} AND p.ano = {{ Number($json.body?.ano ?? 2026) }} AND p.mes = '{{ ($json.body?.mes || \"Nov\").replace(/'/g, \"''\") }}' RETURNING p.id AS id_plan_antigo\n), alocacao_existente AS (\n    SELECT id FROM \"InHire\".alocacoes WHERE id_colaborador = {{ Number($json.body?.id_colaborador) }} AND id_demanda = {{ Number($json.body?.id_demanda_nova ?? 1) }} LIMIT 1\n), nova_alocacao AS (\n    INSERT INTO \"InHire\".alocacoes (id_colaborador, id_demanda, status, deletado) SELECT {{ Number($json.body?.id_colaborador) }}, {{ Number($json.body?.id_demanda_nova ?? 1) }}, true, false WHERE NOT EXISTS (SELECT 1 FROM alocacao_existente) RETURNING id\n), alocacao_final AS (\n    SELECT id FROM nova_alocacao UNION ALL SELECT id FROM alocacao_existente LIMIT 1\n), atualiza_plan_novo AS (\n    UPDATE \"InHire\".planejamentos p SET porcentagem = {{ Number($json.body?.porcentagem_nova_demanda ?? 50) }}, status = true, deletado = false FROM alocacao_final af WHERE p.id_alocacao = af.id AND p.ano = {{ Number($json.body?.ano ?? 2026) }} AND p.mes = '{{ ($json.body?.mes || \"Nov\").replace(/'/g, \"''\") }}' RETURNING p.id\n), insere_plan_novo AS (\n    INSERT INTO \"InHire\".planejamentos (id_alocacao, mes, ano, porcentagem, status, deletado) SELECT af.id, '{{ ($json.body?.mes || \"Nov\").replace(/'/g, \"''\") }}', {{ Number($json.body?.ano ?? 2026) }}, {{ Number($json.body?.porcentagem_nova_demanda ?? 50) }}, true, false FROM alocacao_final af WHERE NOT EXISTS (SELECT 1 FROM atualiza_plan_novo) RETURNING id\n) SELECT {{ Number($json.body?.id_colaborador) }} AS id_colaborador;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        320,
+        976
+      ],
+      "name": "DB Remanejar",
+      "id": "86289222-3f7e-4648-bb41-991697dd62fd",
+      "credentials": {
+        "postgres": {
+          "id": "YfghThO1pwQ6OCVx",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"sucesso\", mensagem: \"Alocação remanejada com sucesso no SGD!\", detalhes: $json }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        592,
+        976
+      ],
+      "name": "Retorno Remanejar",
+      "id": "865a3ee4-9169-481d-87f3-6c22ad6d5de9"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alocar-profissional",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        32,
+        1200
+      ],
+      "name": "Webhook Alocar",
+      "id": "e2828ffe-d283-40b7-810e-8003416f2db2",
+      "webhookId": "8f8de6c4-ddca-4c53-9e0b-08e77668cf02"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH parametros AS (\n    SELECT \n        {{ Number($json.body?.id_colaborador) }} AS p_id_colab,\n        {{ $json.body?.id_demanda ? Number($json.body.id_demanda) : 'NULL::bigint' }} AS p_id_demanda,\n        '{{ ($json.body?.nova_demanda_nome || \"Demanda Temporária\").replace(/'/g, \"''\") }}' AS p_nome_demanda,\n        '{{ $json.body?.nova_demanda_inicio || \"2026-01-01\" }}'::date AS p_dt_inicio,\n        '{{ $json.body?.nova_demanda_fim || \"2026-12-31\" }}'::date AS p_dt_fim,\n        {{ Number($json.body?.percentual ?? 100) }} AS p_percentual,\n        '{{ ($json.body?.mes || \"Nov\").replace(/'/g, \"''\") }}' AS p_mes,\n        {{ Number($json.body?.ano ?? 2026) }} AS p_ano\n),\ndemanda_resolvida AS (\n    INSERT INTO \"InHire\".demandas (\n        nome_demanda, dt_inicio_demanda, dt_termino_demanda_prevista, \n        id_gerente, id_contrato, id_tipo_servico, id_andamento_demanda, status, deletado\n    )\n    SELECT p_nome_demanda, p_dt_inicio, p_dt_fim, 1, 1, 1, 1, true, false\n    FROM parametros WHERE p_id_demanda IS NULL\n    RETURNING id\n),\nid_final_demanda AS (\n    SELECT p_id_demanda AS id FROM parametros WHERE p_id_demanda IS NOT NULL\n    UNION ALL\n    SELECT id FROM demanda_resolvida\n),\nalocacao_existente AS (\n    SELECT id FROM \"InHire\".alocacoes\n    WHERE id_colaborador = (SELECT p_id_colab FROM parametros)\n      AND id_demanda = (SELECT id FROM id_final_demanda)\n    LIMIT 1\n),\nnova_alocacao AS (\n    INSERT INTO \"InHire\".alocacoes (id_colaborador, id_demanda, status, deletado)\n    SELECT (SELECT p_id_colab FROM parametros), (SELECT id FROM id_final_demanda), true, false\n    WHERE NOT EXISTS (SELECT 1 FROM alocacao_existente)\n    RETURNING id\n),\nalocacao_resolvida AS (\n    SELECT id FROM alocacao_existente\n    UNION ALL\n    SELECT id FROM nova_alocacao\n),\natualiza_planejamento AS (\n    UPDATE \"InHire\".planejamentos p\n    SET porcentagem = (SELECT p_percentual FROM parametros)\n    FROM alocacao_resolvida a\n    WHERE p.id_alocacao = a.id\n      AND p.mes = (SELECT p_mes FROM parametros)\n      AND p.ano = (SELECT p_ano FROM parametros)\n    RETURNING p.id\n),\nnovo_planejamento AS (\n    INSERT INTO \"InHire\".planejamentos (id_alocacao, mes, ano, porcentagem, status, deletado)\n    SELECT a.id, (SELECT p_mes FROM parametros), (SELECT p_ano FROM parametros), (SELECT p_percentual FROM parametros), true, false\n    FROM alocacao_resolvida a\n    WHERE NOT EXISTS (SELECT 1 FROM atualiza_planejamento)\n    RETURNING id\n)\nSELECT \n    (SELECT p_id_colab FROM parametros) AS id_colaborador,\n    (SELECT id FROM id_final_demanda) AS id_demanda_alocada,\n    (SELECT p_percentual FROM parametros) AS percentual_alocado;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        320,
+        1200
+      ],
+      "name": "DB Alocar",
+      "id": "d1967e17-6b5b-4bff-8ae9-d5e49b63ad1b",
+      "credentials": {
+        "postgres": {
+          "id": "YfghThO1pwQ6OCVx",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"sucesso\", mensagem: \"Profissional alocado com sucesso!\", alocacao: $json }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        592,
+        1200
+      ],
+      "name": "Retorno Alocar",
+      "id": "ec4685df-1e43-4901-85d0-41d3859b93b0"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Busca": {
+      "main": [
+        [
+          {
+            "node": "Qwen Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qwen Ollama": {
+      "main": [
+        [
+          {
+            "node": "DB Interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB Interno": {
+      "main": [
+        [
+          {
+            "node": "Matching Interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Matching Interno": {
+      "main": [
+        [
+          {
+            "node": "Desvio Base 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Desvio Base 2": {
+      "main": [
+        [
+          {
+            "node": "DB Externo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formatar Resposta Busca",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB Externo": {
+      "main": [
+        [
+          {
+            "node": "Matching Externo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Matching Externo": {
+      "main": [
+        [
+          {
+            "node": "Formatar Resposta Busca",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar Resposta Busca": {
+      "main": [
+        [
+          {
+            "node": "Retorno Busca",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Salvar Favorito": {
+      "main": [
+        [
+          {
+            "node": "DB Salvar Fav",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB Salvar Fav": {
+      "main": [
+        [
+          {
+            "node": "Retorno Fav",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Listar Fav": {
+      "main": [
+        [
+          {
+            "node": "DB Listar Fav",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB Listar Fav": {
+      "main": [
+        [
+          {
+            "node": "Retorno Listar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Remanejar": {
+      "main": [
+        [
+          {
+            "node": "DB Remanejar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB Remanejar": {
+      "main": [
+        [
+          {
+            "node": "Retorno Remanejar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Alocar": {
+      "main": [
+        [
+          {
+            "node": "DB Alocar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB Alocar": {
+      "main": [
+        [
+          {
+            "node": "Retorno Alocar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "eff906ca-9c54-42c1-8b20-bca1dc5491fa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4a4392515ca0dd73e694b4ee06edc5f95b4d9650aed5a2d4d721f9439dae67dc"
+  },
+  "nodeGroups": [],
+  "id": "3ZIipYSPF8jvtp2H",
+  "tags": []
+}
