@@ -2,10 +2,10 @@
   <img src="frontend/assets/logo.png" alt="Logo SoinMesh" width="260">
 </p>
 
-# SoinMesh AI - Alocação Inteligente
+# SoinMesh AI - A organização facilitada.
 
 Este repositório contém a interface frontend, o banco PostgreSQL, a
-infraestrutura Docker e os workflows n8n do projeto InHire AI.
+infraestrutura Docker e os workflows n8n do projeto Soin - Busca Inteligente.
 
 ## Estrutura do projeto
 
