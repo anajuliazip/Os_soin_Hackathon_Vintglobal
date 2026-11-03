@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" alt="Logo SoinMesh" width="260">
+  <img src="frontend/assets/logo.png" alt="Logo SoinMesh" width="260">
 </p>
 
 # SoinMesh AI - Alocação Inteligente
