@@ -142,7 +142,10 @@
     }
     .sb-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 16px 12px; }
     .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .logo { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex: none; color: #fff; background: var(--grad); box-shadow: 0 6px 18px rgba(99,102,241,.4), inset 0 1px 0 rgba(255,255,255,.25); }
+    .logo { position: relative; width: 76px; height: 50px; border: 1px solid rgba(148,163,255,.42); border-radius: 10px; display: grid; place-items: center; flex: none; overflow: hidden; background: transparent; box-shadow: none; }
+    .logo img { position: absolute; top: 50%; left: 50%; width: 150%; height: 150%; max-width: none; object-fit: contain; object-position: center; transform: translate(-50%, -50%); }
+    .s-ico { overflow: hidden; }
+    .s-ico img { position: absolute; top: calc(50% + 7px); left: 50%; width: 100%; height: 100%; object-fit: contain; object-position: center; transform: translate(-50%, -50%) scale(2.4); filter: brightness(0) invert(1); }
     .brand-text strong { display: block; font-size: 16px; letter-spacing: .01em; line-height: 1.2; }
     .brand-text small { display: block; font-size: 12px; color: var(--muted); }
     .sb-rail { display: none; flex-direction: column; align-items: center; gap: 10px; padding: 6px 0; }
@@ -259,7 +262,7 @@
     .state { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 30px 18px; border-radius: 16px; border: 1px dashed var(--line-2); background: rgba(255,255,255,.02); color: var(--muted); }
     .state h3 { color: var(--text); font-size: 16px; }
     .state p { max-width: 460px; font-size: 14px; }
-    .state .s-ico { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: rgba(139,108,255,.14); color: #cdbfff; border: 1px solid rgba(139,108,255,.3); }
+    .state .s-ico { position: relative; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; overflow: hidden; background: rgba(139,108,255,.14); color: #cdbfff; border: 1px solid rgba(139,108,255,.3); }
     .state.err .s-ico { background: rgba(251,113,133,.12); color: #fecdd3; border-color: rgba(251,113,133,.35); }
     .state.err { border-color: rgba(251,113,133,.35); }
     .state.compact { padding: 22px 14px; }
