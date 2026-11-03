@@ -108,6 +108,24 @@ No n8n, configure a credencial **Postgres account** com:
 Se os containers estiverem em redes Docker diferentes, conecte o container do
 n8n à rede do PostgreSQL ou use o endereço acessível entre os containers.
 
+### Ativar o CORS
+
+Para permitir que o frontend acesse os webhooks do n8n, o CORS precisa estar
+configurado para a origem em que o frontend está sendo executado. No arquivo
+`n8n/.env`, confirme:
+
+```env
+N8N_CORS_ALLOW_ORIGIN=http://localhost:8088
+```
+
+Se utilizar outra porta ou o Live Server do VS Code, substitua o valor pela
+origem correspondente. Depois de alterar o arquivo, reinicie o n8n:
+
+```bash
+cd n8n
+docker compose up -d --force-recreate n8n
+```
+
 ## Passo 4: Importar os workflows
 
 No n8n, use **Workflows > Import from File** e importe os arquivos da pasta
