@@ -1,4 +1,8 @@
-# InHire AI - Alocação Inteligente
+<p align="center">
+  <img src="docs/logo.png" alt="Logo SoinMesh" width="260">
+</p>
+
+# SoinMesh AI - Alocação Inteligente
 
 Este repositório contém a interface frontend, o banco PostgreSQL, a
 infraestrutura Docker e os workflows n8n do projeto InHire AI.
