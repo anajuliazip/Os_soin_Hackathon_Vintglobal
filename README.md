@@ -6,10 +6,28 @@ infraestrutura Docker e os workflows n8n do projeto InHire AI.
 ## Estrutura do projeto
 
 ```text
-frontend/          Interface web
-database/          Schema e dados iniciais do PostgreSQL
-infrastructure/    Compose do PostgreSQL e configuração do pgAdmin
-n8n/               Compose, configurações e workflows n8n
+├── frontend/
+│   ├── assets/
+│   │   ├── css/
+│   │   │   └── styles.css
+│   │   ├── js/
+│   │   │   └── app.js
+│   │   └── index.html
+├── database/
+│   ├── 00-create-postgres-role.sql
+│   └── 01-hackathon.sql
+├── infrastructure/
+│   ├── pgadmin-servers.json
+│   ├── postgres-compose.yaml
+│   └── postgres.env.example
+├── n8n/
+│   ├── workflows/
+│   │   ├── dados-reais-dashboard.json
+│   │   └── InHire AI - Motor de Alocação Completo.json
+│   ├── compose.yml
+│   └── .env.example
+├── .gitignore
+└── README.md
 ```
 
 ## Pré-requisitos
