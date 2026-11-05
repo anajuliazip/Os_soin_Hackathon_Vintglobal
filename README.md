@@ -7,6 +7,11 @@
 Este repositório contém a interface frontend, o banco PostgreSQL, a
 infraestrutura Docker e os workflows n8n do projeto Soin - Busca Inteligente.
 
+## Integrantes
+
+- [Ana Júlia Nascimento da Cruz](https://www.linkedin.com/in/anajuliadacruz/)
+- [Brena da Silva Carvalho](https://wa.me/556399397785?text=Ol%C3%A1!%20Gostaria%20de%20mais%20informa%C3%A7%C3%B5es%20sobre%20o%20seu%20perfil.)
+- [João Douglas Silva Rodrigues](www.linkedin.com/in/joãodougl4s)
 ## Estrutura do projeto
 
 ```text
