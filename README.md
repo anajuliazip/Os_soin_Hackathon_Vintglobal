@@ -115,7 +115,7 @@ configurado para a origem em que o frontend está sendo executado. No arquivo
 `n8n/.env`, confirme:
 
 ```env
-N8N_CORS_ALLOW_ORIGIN=http://localhost:8088
+N8N_CORS_ALLOW_ORIGIN= *
 ```
 
 Se utilizar outra porta ou o Live Server do VS Code, substitua o valor pela
