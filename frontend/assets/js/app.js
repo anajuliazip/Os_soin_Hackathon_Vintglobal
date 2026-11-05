@@ -7,7 +7,7 @@
       SALVAR_FAV: `${N8N_BASE_URL}/salvar-favorito`,
       LISTAR_FAV: `${N8N_BASE_URL}/listar-favoritos`,
       REMANEJAR: `${N8N_BASE_URL}/remanejar-alocacao`,
-      ALOCAR: `${N8N_BASE_URL}/alocar-profissional` // NOVO ENDPOINT DE ALOCAÇÃO
+      ALOCAR: `${N8N_BASE_URL}/alocar-profissional` 
     };
 
     const MAX_COMPARACAO = 4;
@@ -692,16 +692,24 @@
     const salvarOcultos = () => { try { localStorage.setItem('inhire_fav_ocultos', JSON.stringify([...ocultos])); } catch (e) {} };
     const favKey = x => [x.id ?? x.id_favorito ?? '', x.id_profissional ?? '', x.nome_profissional ?? ''].join('|');
 
-    async function salvarFavoritoCand(cand, btn) {
+   async function salvarFavoritoCand(cand, btn) {
       setLoading(btn, true, 'Salvando…');
       try {
+        // Recolhe as skills do candidato considerando as diferentes propriedades possíveis
+        const skillsDoCand = cand.skills || cand.skills_atendidas || cand.todas_skills_do_colaborador || [];
+
         const dados = await requisitar(ENDPOINTS.SALVAR_FAV, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            id_gerente: 1, id_profissional: cand.id, nome_profissional: cand.nome,
+            id_gerente: 1, 
+            id_profissional: cand.id, 
+            nome_profissional: cand.nome,
             origem: cand.tipo_base === 'interno' ? 'SGD (Interno)' : 'Externo',
-            cargo: cand.cargo, senioridade: cand.senioridade,
-            score_ranking: num(cand.aderencia_skills, 100), disponibilidade_media: num(cand.tempo_livre, 100)
+            cargo: cand.cargo, 
+            senioridade: cand.senioridade,
+            score_ranking: num(cand.aderencia_skills, 100), 
+            disponibilidade_media: num(cand.tempo_livre, 100),
+            skills: Array.isArray(skillsDoCand) ? skillsDoCand : []
           })
         });
         favoritosCache = null;
@@ -757,6 +765,10 @@
       div.innerHTML = favoritosVisiveis.map((x, i) => {
         const interno = /interno|sgd/i.test(String(x.origem || ''));
         const score = x.score_ranking, disp = x.disponibilidade_media;
+        
+        // Garante que pegamos num array válido de skills do favorito
+        const skillsArray = Array.isArray(x.skills) ? x.skills : [];
+
         return `<article class="card fav" data-action="ver-perfil" data-ctx="fav" data-i="${i}">
           <div class="fav-top">${avatar(x.nome_profissional)}
             <div style="min-width:0">
@@ -769,6 +781,14 @@
             ${score !== undefined && score !== null ? `<span class="badge ok">Aderência ${esc(score)}%</span>` : ''}
             ${disp !== undefined && disp !== null ? `<span class="badge warn">Disp. ${esc(disp)}%</span>` : ''}
           </div>
+          
+          <!-- Renderiza as etiquetas de skills se existirem -->
+          ${skillsArray.length > 0 ? `
+            <div class="skills-list" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:8px;">
+              ${skillsArray.map(s => `<span class="badge" style="background:rgba(255,255,255,0.08); color:#fff; font-size:11px;">${esc(s)}</span>`).join('')}
+            </div>
+          ` : ''}
+
           <div class="fav-actions">
             <!-- Os botões internos não disparam o evento da Article Card por conta do prevent padrão/delegação -->
             <button type="button" class="btn btn-ghost btn-sm" data-action="ver-perfil" data-ctx="fav" data-i="${i}">${icon('eye')}<span>Ver informações</span></button>
