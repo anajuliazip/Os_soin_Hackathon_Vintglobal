@@ -53,8 +53,12 @@
     const hue = nome => { let h = 0; for (const ch of String(nome || '')) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
     const avatar = (nome, sm = false) => `<span class="avatar ${sm ? 'sm' : ''}" style="--h:${hue(nome)}" aria-hidden="true">${esc(iniciais(nome))}</span>`;
     const fmtData = v => { const s = String(v ?? ''); const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : (s || '—'); };
-    const tipoInterno = c => c.tipo_base === 'interno' || /interno|sgd/i.test(String(c.origem || ''));
-    const precisaRemanejar = c => tipoInterno(c) && String(c.status_acao || '').toLowerCase().includes('remanejamento');
+    const tipoInterno = c => c.tipo_base === 'interno' || c.id_colaborador != null || /interno|sgd/i.test(String(c.origem || ''));
+    const disponibilidadeLivre = c => num(c.tempo_livre ?? c.disponibilidade_media ?? c.disponibilidade, null);
+    const precisaRemanejar = c => tipoInterno(c) && (
+      String(c.status_acao || '').toLowerCase().includes('remanejamento') ||
+      (disponibilidadeLivre(c) !== null && disponibilidadeLivre(c) < 100)
+    );
 
     function bar(n, cls) {
       if (n === null) return '';
@@ -416,9 +420,13 @@
 
     function renderizarResultadoBusca(data) {
       const resumo = data.resumo_busca || {};
-      ultimoRanking = lista(data.ranking);
+      ultimoRanking = lista(data.ranking).filter(c =>
+        $('modo-disp').value === 'estrito_0_a_x'
+          ? disponibilidadeLivre(c) !== null && disponibilidadeLivre(c) < 100
+          : $('modo-disp').value !== 'minimo' || disponibilidadeLivre(c) !== null && disponibilidadeLivre(c) > 0
+      );
 
-      $('kpi-total').innerText = resumo.total_encontrados ?? 0;
+      $('kpi-total').innerText = ultimoRanking.length;
 
       const f = resumo.filtros_extraidos || {};
       const skillsF = listaTexto(f.skills);
