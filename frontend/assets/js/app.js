@@ -41,6 +41,13 @@
     const lista = v => Array.isArray(v) ? v : (v && typeof v === 'object' && Object.keys(v).length ? [v] : []);
     const listaTexto = v => Array.isArray(v) ? v.map(String).filter(Boolean)
       : (typeof v === 'string' && v.trim() ? v.split(/[,;]/).map(s => s.trim()).filter(Boolean) : []);
+    const skillsDetalhadas = v => lista(v).map(s => {
+      if (typeof s === 'string') return { nome: s, nivel: '' };
+      return {
+        nome: s.nome ?? s.nome_skill ?? s.skill ?? '',
+        nivel: s.nivel ?? s.nivel_conhecimento ?? ''
+      };
+    }).filter(s => s.nome);
     const candKey = c => String(c.id ?? c.nome);
     const iniciais = nome => String(nome || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase() || '?';
     const hue = nome => { let h = 0; for (const ch of String(nome || '')) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
@@ -160,7 +167,53 @@
     }));
 
     /* Abertura e Montagem do Perfil Detalhado Universal */
-    function abrirDetalhesProfissional(prof) {
+    async function carregarDadosDetalhados(prof) {
+      const id = prof.id_colaborador ?? prof.id_profissional
+        ?? (/interno|sgd/i.test(String(prof.origem ?? prof.tipo_base ?? '')) ? prof.id : null);
+      if (!id) return prof;
+      if (!demandasCache) {
+        const res = await fetch(ENDPOINTS.DEMANDAS);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const texto = await res.text();
+        demandasCache = lista(texto ? JSON.parse(texto) : []);
+      }
+      const vinculos = demandasCache.flatMap(d => lista(d.colaboradores)
+        .filter(c => String(c.id_colaborador ?? c.id) === String(id))
+        .map(c => ({
+          ...c,
+          id_demanda: c.id_demanda ?? d.id,
+          nome_demanda: c.nome_demanda ?? d.nome,
+          projeto: c.projeto ?? d.projeto,
+          status: c.status ?? d.andamento,
+          inicio: c.inicio ?? d.inicio,
+          termino: c.termino ?? d.termino
+        })));
+      if (!vinculos.length) return prof;
+      const primeiro = vinculos[0];
+      const demandas = vinculos.map(({ id_demanda, nome_demanda, ...demanda }) => ({
+        ...demanda,
+        id_demanda,
+        nome_demanda
+      }));
+      const skills = vinculos.flatMap(v => skillsDetalhadas(
+        lista(v.skills_detalhadas).length ? v.skills_detalhadas : v.skills
+      ));
+      const skillsUnicas = [...new Map(skills.map(s => [s.nome, s])).values()];
+      return {
+        ...prof,
+        ...primeiro,
+        demandas_atuais: demandas,
+        skills_detalhadas: skillsUnicas
+      };
+    }
+
+    async function abrirDetalhesProfissional(prof) {
+      try {
+        prof = await carregarDadosDetalhados(prof);
+      } catch (error) {
+        console.error(error);
+        toast('Não foi possível carregar todos os dados deste colaborador.', { tipo: 'warn' });
+      }
       const nome = prof.nome ?? prof.nome_profissional ?? prof.nome_abreviado ?? 'Não informado';
       const id = prof.id ?? prof.id_profissional ?? prof.id_colaborador ?? prof.id_talento ?? 'Não informado';
       const cargo = prof.cargo ?? 'Não informado';
@@ -168,16 +221,23 @@
       const origem = prof.origem ?? prof.tipo_base ?? (prof.id_colaborador ? 'Interno' : (prof.id_talento ? 'Externo' : 'Não informada'));
       const isInterno = /interno|sgd/i.test(origem);
 
-      const skillsAll = listaTexto(prof.skills || prof.skills_cadastradas || prof.skills_buscadas_atendidas || []);
+      const fonteSkillsDetalhadas = lista(prof.skills_detalhadas).length
+        ? prof.skills_detalhadas
+        : (prof.skills || prof.skills_cadastradas || prof.skills_buscadas_atendidas || []);
+      const skillsDetalhadasAll = skillsDetalhadas(fonteSkillsDetalhadas);
+      const skillsAll = skillsDetalhadasAll.map(s => s.nome);
       const skillsMatch = new Set(listaTexto(prof.skills_atendidas || []));
       if (skillsAll.length === 0 && skillsMatch.size > 0) { skillsMatch.forEach(s => skillsAll.push(s)); }
 
-      const tempoLivre = num(prof.tempo_livre ?? prof.disponibilidade ?? prof.disponibilidade_media, null);
-      const alocAtual = prof.alocacao_atual ?? prof.percentual_alocado_medio ?? (tempoLivre !== null ? (100 - tempoLivre) + '%' : 'Não informado');
+      const alocAtual = prof.alocacao_atual ?? prof.percentual_alocado_medio;
+      const alocAtualNum = num(String(alocAtual ?? '').replace('%', ''), null);
+      const tempoLivre = alocAtualNum !== null
+        ? Math.max(0, 100 - alocAtualNum)
+        : num(prof.tempo_livre ?? prof.disponibilidade ?? prof.disponibilidade_media, null);
 
       const demandas = lista(prof.projetos_atuais ?? prof.demandas_atuais ?? []);
 
-      const chavesUsadas = new Set(['nome', 'nome_profissional', 'nome_abreviado', 'id', 'id_profissional', 'id_colaborador', 'id_talento', 'cargo', 'senioridade', 'origem', 'tipo_base', 'skills', 'skills_cadastradas', 'skills_buscadas_atendidas', 'skills_atendidas', 'tempo_livre', 'disponibilidade', 'disponibilidade_media', 'alocacao_atual', 'percentual_alocado_medio', 'projetos_atuais', 'demandas_atuais', 'posicao', 'status_acao', 'aderencia_skills', 'score_ranking', 'qtd_skills_atendidas', 'qtd_skills_pedidas', 'match_encontrado']);
+      const chavesUsadas = new Set(['nome', 'nome_profissional', 'nome_abreviado', 'id', 'id_profissional', 'id_colaborador', 'id_talento', 'cargo', 'senioridade', 'origem', 'tipo_base', 'skills', 'skills_detalhadas', 'skills_cadastradas', 'skills_buscadas_atendidas', 'skills_atendidas', 'tempo_livre', 'disponibilidade', 'disponibilidade_media', 'alocacao_atual', 'percentual_alocado_medio', 'projetos_atuais', 'demandas_atuais', 'posicao', 'status_acao', 'aderencia_skills', 'score_ranking', 'qtd_skills_atendidas', 'qtd_skills_pedidas', 'match_encontrado']);
       let extraHtml = '';
       for (const [k, v] of Object.entries(prof)) {
         if (!chavesUsadas.has(k) && v !== null && v !== undefined && v !== '') {
@@ -203,22 +263,22 @@
 
       const s2 = `<div><h4 class="eyebrow" style="color:var(--blue);margin-bottom:10px">2. Competências (Skills)</h4>
         <div style="${styleBlock}">
-          ${skillsAll.length ? `<div class="tags">${skillsAll.map(s => `<span class="tag ${skillsMatch.has(s) ? 'brand' : ''}">${esc(s)}</span>`).join('')}</div>` : '<p style="font-size:14px;color:var(--muted);margin:0">Nenhuma competência cadastrada para este perfil.</p>'}
+          ${skillsDetalhadasAll.length ? `<div class="tags">${skillsDetalhadasAll.map(s => `<span class="tag ${skillsMatch.has(s.nome) ? 'brand' : ''}">${esc(s.nome)}${s.nivel ? ` <small>(${esc(s.nivel)})</small>` : ''}</span>`).join('')}</div>` : '<p style="font-size:14px;color:var(--muted);margin:0">Nenhuma competência cadastrada para este perfil.</p>'}
         </div></div>`;
 
       const s3 = `<div><h4 class="eyebrow" style="color:var(--blue);margin-bottom:10px">3. Disponibilidade (Agenda)</h4>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; ${styleBlock}">
           <div><span style="font-size:12px;color:var(--faint)">Tempo Livre</span><br><b style="font-size:18px; color:${tempoLivre === 100 ? '#6ee7b7' : (tempoLivre > 0 ? '#fcd34d' : '#fda4af')}">${tempoLivre !== null ? tempoLivre + '%' : '—'}</b></div>
-          <div><span style="font-size:12px;color:var(--faint)">Total Alocado</span><br><b style="font-size:18px">${esc(alocAtual)}</b></div>
+          <div><span style="font-size:12px;color:var(--faint)">Total Alocado</span><br><b style="font-size:18px">${esc(alocAtual !== undefined && alocAtual !== null ? (typeof alocAtual === 'number' ? `${alocAtual}%` : alocAtual) : '—')}</b></div>
           <div style="grid-column:1/-1;">${bar(tempoLivre, clsDisp(tempoLivre))}</div>
         </div></div>`;
 
       const s4 = `<div><h4 class="eyebrow" style="color:var(--blue);margin-bottom:10px">4. Alocações Atuais (Demandas)</h4>
         <div style="${styleBlock} display:grid; gap:10px;">
-          ${demandas.length ? demandas.map(d => `<div style="font-size:14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line-2); padding-bottom:8px">
-            <span><b>${esc(d.nome_demanda ?? d.nome ?? 'Projeto Omitido')}</b> <span style="color:var(--faint);font-size:12px">(ID ${esc(d.id_demanda ?? '—')})</span></span>
-            <span class="count-pill" style="font-size:12px;padding:3px 8px">${esc(d.percentual_na_demanda ?? d.porcentagem ?? '—')}%</span>
-          </div>`).join('') : '<p style="font-size:14px;color:var(--muted);margin:0">Nenhuma alocação ativa neste período.</p>'}
+          ${demandas.length ? demandas.map(d => `<div style="font-size:14px; border-bottom:1px solid var(--line-2); padding-bottom:10px">
+            <div style="display:flex; justify-content:space-between; gap:12px"><span><b>${esc(d.nome_demanda ?? d.nome ?? 'Demanda sem nome')}</b> <span style="color:var(--faint);font-size:12px">(ID ${esc(d.id_demanda ?? d.id ?? '—')})</span></span><span class="count-pill" style="font-size:12px;padding:3px 8px">${esc(d.percentual_na_demanda ?? d.porcentagem ?? '—')}%</span></div>
+            <div style="color:var(--muted);font-size:12px;margin-top:5px">${esc(d.projeto ?? d.contrato ?? 'Projeto não informado')} · ${esc(d.status ?? d.andamento ?? 'Status não informado')} · ${esc(d.cargo ?? cargo)} · ${esc(d.senioridade ?? senioridade)}</div>
+          </div>`).join('') : '<p style="font-size:14px;color:var(--muted);margin:0">Nenhuma demanda vinculada a este colaborador.</p>'}
         </div></div>`;
 
       const s5 = extraHtml ? `<div><h4 class="eyebrow" style="color:var(--blue);margin-bottom:10px">5. Informações Adicionais</h4>
